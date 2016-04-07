@@ -5,6 +5,6 @@
 *distribuzione univariata (grafica e numerica):ricerca otulier ecc
 *ricerca NA
 *ggpairs su campione
-* analisi bivariata con target per tutte le variabili
-*WOE (tabellare e grafica)
+* analisi bivariata con target per tutte le variabili => grafica, ODDS ratio (vedi volume logistic regression), poi WOE
+*WOE (tabellare e grafica) e IV
 *analisi trivariate
