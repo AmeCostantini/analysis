@@ -1,0 +1,27 @@
+
+```{r}
+getwd()
+setwd("/Users/Americo/Documents/Education/Unitelma/tesi/data_analysis/dataset")
+bank0 <- read.csv(file = "bank_full.csv", sep = ";")
+str(bank0)
+require(dplyr)
+
+bank0 %>%
+        group_by (y)  %>% 
+        summarise(n= n()) %>%
+        mutate(freq = n / sum(n))
+
+bank0 %>%
+        group_by (default, y)  %>% 
+        summarise(n= n()) %>%
+        mutate(freq = n / sum(n))
+
+fit <- glm(y ~ default, data = bank0, family = "binomial")
+summary(fit)
+
+ODDS  = exp(-0.67413)
+
+```
+
+
+
