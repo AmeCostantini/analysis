@@ -4,9 +4,8 @@
 Forse divisa tra variabili di profilo e variabili di campaign
 
 *comprensione delle variabili
-*distribuzione univariata (grafica e numerica):ricerca otulier ecc
-*ricerca NA
-*ggpairs su campione
-* analisi bivariata con target per tutte le variabili => grafica, ODDS ratio (vedi volume logistic regression), poi WOE
+*distribuzione univariata (grafica e numerica) e bivariata con y
+*analisi tra le variabili di input alla ricerca di confounding e correlazione
+*ODDS ratio e WOE di ogni variabile di input
 *WOE (tabellare e grafica) e IV
 *analisi trivariate
