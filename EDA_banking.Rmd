@@ -74,12 +74,158 @@ summary(bank0)
 
 ##Age
 
-```{r}
+```{r age graph}
 g_age <- ggplot(bank0, aes(x = factor(age))) + geom_bar(col = "white")
-g_age_f <- ggplot(bank0, aes(x = factor(age), fill = y)) + 
+g_age
+g_age_y <- ggplot(bank0, aes(x = factor(age), fill = y)) + 
         geom_bar(col = "white", position = "fill") + 
-        geom_hline(y.intercept = 0.89, width = 2, col = "black")
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_age_y
+```
+
+Vediamo che dai 30 ai 59 anni l'incidenza di sottoscrizioni è pari a quella complessiva; c'è anche da dire che dopo i 60 non ci sono numerosità grandi:
+
+```{r age table}
+t_age_y <- bank0 %>%
+        group_by (factor(age)) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_age_y
+```
+
+Una idea potrebbe essere quella di fare un binning 18-30, 31-59, 60 o più. Certo che la variabile sembra predittiva.
+
+##Job
+
+```{r job graph}
+g_job  <- ggplot(bank0, aes(x = job)) +
+        geom_bar()
+g_job
+g_job_y  <- ggplot(bank0, aes(x = job, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_job_y
+```
+
+Non molto predittivo, c'è l'età che fa da counfounding e spiega la stessa variabilità di studenti e pensionati.
+
+```{r job table}
+t_job_y <- bank0 %>%
+        group_by (job) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_job_y
+```
+
+Non mi spiego perché i disoccupati tendano a fare più depositi. Forse in questa categoria ci sono giovani a cui il deposito viene regalato dai genitori.
+
+##Marital
+
+```{r marital graph}
+g_marital  <- ggplot(bank0, aes(x = marital)) +
+        geom_bar()
+g_marital
+g_marital_y  <- ggplot(bank0, aes(x = marital, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_marital_y
+```
+
+Non me lo aspettavo. Pochissima predittività della variabile
+
+```{r marital table}
+t_marital_y <- bank0 %>%
+        group_by (marital) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_marital_y
+```
+
+I single tendono a farne un po' di più. Anche qui, confounding dell'età giovanile?
+
+##Education
+
+```{r education graph}
+g_education  <- ggplot(bank0, aes(x = education)) +
+        geom_bar()
+g_education
+g_education_y  <- ggplot(bank0, aes(x = education, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_education_y
+```
+
+Sembra che a maggior livello culturale segua maggiore propensione a sottoscrivere depositi. Da capire se qui gli studenti fanno confounding, anche se ci credo meno. Penso (sarà da verificare) che anche tra i trentacinquenni ci siano molti laureati.
+
+
+```{r education table}
+t_education_y <- bank0 %>%
+        group_by (education) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_education_y
 ```
 
 
+##Default
 
+```{r default graph}
+g_default  <- ggplot(bank0, aes(x = default)) +
+        geom_bar()
+g_default
+g_default_y  <- ggplot(bank0, aes(x = default, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_default_y
+```
+
+Pochissimi in default, i no si comportanto come il campione, ma d'altronde sono pressoché tutto il campione. Certo il sì è un po' predittivo, ma poca numerosità.
+
+
+```{r default table}
+t_default_y <- bank0 %>%
+        group_by (default) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_default_y
+```
+
+##Balance
+
+```{r balance graph}
+g_balance <- ggplot(bank0, aes(x = 1, y = balance)) + 
+        geom_boxplot()
+g_balance
+
+g_balance_y <- ggplot(bank0, aes(x = y, y = balance)) + 
+        geom_boxplot()
+g_balance_y
+```
+
+è una distribuzione con un range molto ampio ma un range interquartile molto ristretto, sia complessivamente che per i due gruppi. Provo a capire se posso analizzare i dati fino al 95 percentile
+
+```{r balance table}
+quantile(bank0$balance, c(seq(0.1, 1, 0.05)))
+perc_95 <- quantile(bank0$balance, 0.95)
+```
+
+```{r balance graph p95}
+bank0_p95 <- bank0 %>%
+        filter(balance <= perc_95)
+g_balance_p95 <- ggplot(bank0_p95, aes(x = 1, y = balance)) + 
+        geom_boxplot()
+g_balance_p95
+
+g_balance_y_p95 <- ggplot(bank0_p95, aes(x = y, y = balance)) + 
+        geom_boxplot()
+g_balance_y_p95
+```
+
+Ora comincia a essere evidente che chi sottoscrive depositi tende a avere saldo sul conto più alto; vale per la mediana del gruppo sì, ma anche per il terzo quartile. Quindi per saldi che crescono si tende a sottoscrivere più depositi, il che ha senso. più soldi hai, più ne puoi depositare.
+
+```{r}
+bank0 %>%
+        filter(balance <=perc_95) %>%
+        mutate(balance_class = ntile(balance, 10)) %>%
+        group_by (balance_class) %>%
+        summarise(n(), mean(y == "yes"))
+```
+
+Esatto. al crescere del saldo cresce la quota di coloro che sottoscrivono.
+
+*scrivi meglio perc95 associandolo a balance  echiude bene balance*
