@@ -5,9 +5,14 @@ output: word_document
 #Caricamento package
 
 ```{r packages, message=FALSE}
+install.packages("devtools")
+library(devtools)
+install_github("riv","tomasgreif")
+library(woe)
 require(ggplot2)
 require(dplyr)
 require(GGally)
+require(tidyr)
 ```
 
 #Set up cartelle e creazione dataset
@@ -15,8 +20,8 @@ require(GGally)
 ```{r directory e dataset}
 getwd()
 setwd("/Users/Americo/Documents/Education/Unitelma/tesi/data_analysis/dataset")
-bank0 <- tbl_df(read.csv(file = "bank_full.csv", sep = ";"))
-bank0_sm <- tbl_df(read.csv(file = "bank.csv", sep = ";"))
+bank0 <- read.csv(file = "bank_full.csv", sep = ";")
+bank0_sm <- read.csv(file = "bank.csv", sep = ";")
 ```
 
 #Informazioni sul dataset
@@ -152,7 +157,7 @@ g_education_y  <- ggplot(bank0, aes(x = education, fill = y)) +
 g_education_y
 ```
 
-Sembra che a maggior livello culturale segua maggiore propensione a sottoscrivere depositi. Da capire se qui gli studenti fanno confounding, anche se ci credo meno. Penso (sarà da verificare) che anche tra i trentacinquenni ci siano molti laureati.
+Sembra che a maggior livello culturale segua maggiore propensione a sottoscrivere depositi. Da capire se qui gli studenti fanno confounding, anche se ci credo meno. Penso (sarà da verificare con qualche analisi trivariata) che anche tra i trentacinquenni ci siano molti laureati.
 
 
 ```{r education table}
@@ -201,12 +206,12 @@ g_balance_y
 
 ```{r balance table}
 quantile(bank0$balance, c(seq(0.1, 1, 0.05)))
-perc_95 <- quantile(bank0$balance, 0.95)
+balance_p_95 <- quantile(bank0$balance, 0.95)
 ```
 
 ```{r balance graph p95}
 bank0_p95 <- bank0 %>%
-        filter(balance <= perc_95)
+        filter(balance <= balance_p_95)
 g_balance_p95 <- ggplot(bank0_p95, aes(x = 1, y = balance)) + 
         geom_boxplot()
 g_balance_p95
@@ -219,8 +224,8 @@ g_balance_y_p95
 Ora comincia a essere evidente che chi sottoscrive depositi tende a avere saldo sul conto più alto; vale per la mediana del gruppo sì, ma anche per il terzo quartile. Quindi per saldi che crescono si tende a sottoscrivere più depositi, il che ha senso. più soldi hai, più ne puoi depositare.
 
 ```{r}
-bank0 %>%
-        filter(balance <=perc_95) %>%
+t_balance_class_y <- bank0 %>%
+        filter(balance <= balance_p_95) %>%
         mutate(balance_class = ntile(balance, 10)) %>%
         group_by (balance_class) %>%
         summarise(n(), mean(y == "yes"))
@@ -228,4 +233,75 @@ bank0 %>%
 
 Esatto. al crescere del saldo cresce la quota di coloro che sottoscrivono.
 
-*scrivi meglio perc95 associandolo a balance  echiude bene balance*
+##Housing
+
+```{r housing graph}
+g_housing  <- ggplot(bank0, aes(x = housing)) +
+        geom_bar()
+g_housing
+g_housing_y  <- ggplot(bank0, aes(x = housing, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_housing_y
+```
+
+Una buona predittività, peraltro due gruppi di quasi uguale dimensione. Chi ha già un mutuo per la casa non sottoscrive depositi a lungo termine, ovvio.
+
+
+```{r housing table}
+t_housing_y <- bank0 %>%
+        group_by (housing) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_housing_y
+```
+
+##Loan
+
+```{r loan graph}
+g_loan  <- ggplot(bank0, aes(x = loan)) +
+        geom_bar()
+g_loan
+g_loan_y  <- ggplot(bank0, aes(x = loan, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_loan_y
+```
+
+Una buona predittività, ma minore del mutuo. Chi ha un prestito personale tende a sottoscrivere meno depositi, certo che è un gruppo più ristretto, e infatti chi non li sottoscrive si comporta pressoché come il campione (un pelino più sottoscrivente).
+
+
+```{r loan table}
+t_loan_y <- bank0 %>%
+        group_by (loan) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_loan_y
+```
+
+I volumi sono comunque significativi.
+
+##WOE variabili di profilo
+
+dovrò scrivere una funzione per calcolare l'information value.
+
+
+```{r}
+
+woe(Data=bank0,"job",FALSE,"y",10,Bad=0,Good=1)
+
+iv.mult(bank0,"y",vars=c("housing"))
+
+housing_woe <- bank0 %>%
+        select(housing, y) %>%
+        group_by(housing) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+
+housing_woe$woe <- log(housing_woe$perc_no / housing_woe$perc_y) # ok WOE
+
+#IV = sum((perc_no - perc_y) * housing_woe$woe
+
+sum((housing_woe$perc_no - housing_woe$perc_y) * housing_woe$woe) # corretto
+
+```
+
