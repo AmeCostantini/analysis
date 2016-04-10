@@ -1,0 +1,57 @@
+---
+title: "EDA_campaign_univariate_contacts"
+author: "Americo"
+date: "10 aprile 2016"
+output: html_document
+---
+
+
+##Campaign
+
+```{r campaign graph}
+g_campaign <- ggplot(bank0, aes(x = 1, y = campaign)) + 
+        geom_boxplot()
+g_campaign
+
+g_campaign_y <- ggplot(bank0, aes(x = y, y = campaign)) + 
+        geom_boxplot()
+g_campaign_y
+```
+
+Non mi sembra discrimini molto il numero di contatti precedenti.
+
+```{r campaign class table}
+t_campaign_class_y <- bank0 %>%
+        mutate(campaign_class = ntile(campaign, 10)) %>%
+        group_by (campaign_class) %>%
+        summarise(n(), media = mean(y == "yes"))
+```
+
+```{r campaign class graph}
+bank0  <- bank0 %>%
+        mutate(campaign_class = ntile(campaign, 10))
+
+g_campaign_class_y <- ggplot(bank0, aes(x = factor(campaign_class), fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_campaign_class_y
+```
+
+Andamento normale. La maggiore conversion si ha per tar il 30 e il quarantesimo percentile di contatti (da capire quanti contatti sono).
+
+
+```{r campaign IV}
+campaign_class_woe <- bank0 %>%
+        select(campaign_class, y) %>%
+        group_by(campaign_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+campaign_class_woe$woe <- log(campaign_class_woe$perc_no / campaign_class_woe$perc_y)
+campaign_class_IV <- sum((campaign_class_woe$perc_no - campaign_class_woe$perc_y) * campaign_class_woe$woe)
+```
+
+0.58, abbastanza predittiva.
+
+##pdays
+

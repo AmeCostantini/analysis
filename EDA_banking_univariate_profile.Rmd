@@ -2,75 +2,6 @@
 output: word_document
 ---
 
-#Caricamento package
-
-```{r packages, message=FALSE}
-install.packages("devtools")
-library(devtools)
-install_github("riv","tomasgreif")
-library(woe)
-require(ggplot2)
-require(dplyr)
-require(GGally)
-require(tidyr)
-```
-
-#Set up cartelle e creazione dataset
-
-```{r directory e dataset}
-getwd()
-setwd("/Users/Americo/Documents/Education/Unitelma/tesi/data_analysis/dataset")
-bank0 <- read.csv(file = "bank_full.csv", sep = ";")
-bank0_sm <- read.csv(file = "bank.csv", sep = ";")
-```
-
-#Informazioni sul dataset
-
-##Input variables
-
-###bank client data
- 
-* 1 - age (numeric)
-*    2 - job : type of job (categorical: "admin.","unknown","unemployed","management","housemaid","entrepreneur","student", "blue-collar","self-employed","retired","technician","services") 
-*    3 - marital : marital status (categorical: "married","divorced","single"; note: "divorced" means divorced or widowed)
-*    4 - education (categorical: "unknown","secondary","primary","tertiary")
-*    5 - default: has credit in default? (binary: "yes","no")
-*    6 - balance: average yearly balance, in euros (numeric) 
-*    7 - housing: has housing loan? (binary: "yes","no")
-*    8 - loan: has personal loan? (binary: "yes","no")
-*    # related with the last contact of the current campaign:
-*    9 - contact: contact communication type (categorical: "unknown","telephone","cellular") 
-*   10 - day: last contact day of the month (numeric)
-*   11 - month: last contact month of year (categorical: "jan", "feb", "mar", ..., "nov", "dec")
-*   12 - duration: last contact duration, in seconds (numeric)
-
-###Other attributes:
-
-*   13 - campaign: number of contacts performed during this campaign and for this client (numeric, includes last contact)
-*   14 - pdays: number of days that passed by after the client was last contacted from a previous campaign (numeric, -1 means client was not previously contacted)
-*   15 - previous: number of contacts performed before this campaign and for this client (numeric)
-*   16 - poutcome: outcome of the previous marketing campaign (categorical: "unknown","other","failure","success")
-
-##Output variable (desired target)
-
-*   17 - y - has the client subscribed a term deposit? (binary: "yes","no")
-
-It should be stressed that due to internal competition and current financial crisis, there are huge pressures for European banks to increase a financial asset. To solve this issue, one adopted strategy is offer attractive long-term deposit applications with good interest rates, in particular by using directed marketing campaigns. Also, the same drivers are pressing for a reduction in costs and time. Thus, there is a need for an improvement in efficiency: lesser contacts should be done, but an approximately number of successes (clients subscribing the deposit) should be kept.
-
-##Missing Attribute Values
-None
-
-#Esplorazione del dataset
-
-##Esplorazione dimensioni
-
-```{r exp dataset}
-str(bank0)
-dim(bank0)
-```
-
-Non ci sono variabili numeriche, solo interi e fattori. Da capire se servirà qualche trasformazione
-
 #Esplorazione tabellare distribuzioni univariate
 
 ```{r 5 quantities}
@@ -99,6 +30,28 @@ t_age_y
 
 Una idea potrebbe essere quella di fare un binning 18-30, 31-59, 60 o più. Certo che la variabile sembra predittiva.
 
+```{r age IV}
+bank0$age_num <- as.numeric(bank0$age)
+bank0$age_class <- cut(bank0$age_num, breaks = c(min(bank0$age_num)-1, 30, 59, max(bank0$age_num)))
+bank_age_na <- bank0[is.na(bank0$age_class),]
+
+age_class_woe <- bank0 %>%
+        select(age_class, y) %>%
+        group_by(age_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+age_class_woe$woe <- log(age_class_woe$perc_no / age_class_woe$perc_y)
+age_class_IV <- sum((age_class_woe$perc_no - age_class_woe$perc_y) * age_class_woe$woe)
+```
+
+```{r}
+bank0 %>%
+        select(age_class, y) %>%
+        group_by(age_class) %>%
+        summarise(n = n(), perc_y = mean(y =="yes"))
+```
+
 ##Job
 
 ```{r job graph}
@@ -121,6 +74,29 @@ t_job_y
 ```
 
 Non mi spiego perché i disoccupati tendano a fare più depositi. Forse in questa categoria ci sono giovani a cui il deposito viene regalato dai genitori.
+
+```{r job IV}
+job_woe <- bank0 %>%
+        select(job, y) %>%
+        group_by(job) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+job_woe$woe <- log(job_woe$perc_no / job_woe$perc_y)
+job_IV <- sum((job_woe$perc_no - job_woe$perc_y) * job_woe$woe)
+
+#woe_func <- function(x) {
+        #bank0 %>%
+        #select_(x, "y") %>%
+        #group_by_(x) %>%
+        #summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        #mutate(perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        #select(starts_with("perc"))
+
+#paste(c("x","_","IV"), collapse="") <- sum((perc_no - perc_y) * log(perc_no / perc_y))       
+#}
+#woe_func("job")#la NSE è troppo complessa
+```
 
 ##Marital
 
@@ -145,6 +121,17 @@ t_marital_y
 
 I single tendono a farne un po' di più. Anche qui, confounding dell'età giovanile?
 
+```{r marital IV}
+marital_woe <- bank0 %>%
+        select(marital, y) %>%
+        group_by(marital) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+marital_woe$woe <- log(marital_woe$perc_no / marital_woe$perc_y)
+marital_IV <- sum((marital_woe$perc_no - marital_woe$perc_y) * marital_woe$woe)
+```
+
 ##Education
 
 ```{r education graph}
@@ -167,6 +154,16 @@ t_education_y <- bank0 %>%
 t_education_y
 ```
 
+```{r education IV}
+education_woe <- bank0 %>%
+        select(education, y) %>%
+        group_by(education) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+education_woe$woe <- log(education_woe$perc_no / education_woe$perc_y)
+education_IV <- sum((education_woe$perc_no - education_woe$perc_y) * education_woe$woe)
+```
 
 ##Default
 
@@ -188,6 +185,17 @@ t_default_y <- bank0 %>%
         group_by (default) %>%
         summarise (n = n(), perc_y = mean(y=="yes"))
 t_default_y
+```
+
+```{r default IV}
+default_woe <- bank0 %>%
+        select(default, y) %>%
+        group_by(default) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+default_woe$woe <- log(default_woe$perc_no / default_woe$perc_y)
+default_IV <- sum((default_woe$perc_no - default_woe$perc_y) * default_woe$woe)
 ```
 
 ##Balance
@@ -223,7 +231,7 @@ g_balance_y_p95
 
 Ora comincia a essere evidente che chi sottoscrive depositi tende a avere saldo sul conto più alto; vale per la mediana del gruppo sì, ma anche per il terzo quartile. Quindi per saldi che crescono si tende a sottoscrivere più depositi, il che ha senso. più soldi hai, più ne puoi depositare.
 
-```{r}
+```{r balance class table}
 t_balance_class_y <- bank0 %>%
         filter(balance <= balance_p_95) %>%
         mutate(balance_class = ntile(balance, 10)) %>%
@@ -232,6 +240,22 @@ t_balance_class_y <- bank0 %>%
 ```
 
 Esatto. al crescere del saldo cresce la quota di coloro che sottoscrivono.
+
+```{r balance IV}
+
+bank0  <- bank0 %>%
+        mutate(balance_class = ntile(balance, 10))
+        
+balance_class_woe <- bank0 %>%
+        select(balance_class, y) %>%
+        group_by(balance_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+balance_class_woe$woe <- log(balance_class_woe$perc_no / balance_class_woe$perc_y)
+balance_class_IV <- sum((balance_class_woe$perc_no - balance_class_woe$perc_y) * balance_class_woe$woe)
+```
+
 
 ##Housing
 
@@ -254,6 +278,18 @@ t_housing_y <- bank0 %>%
         summarise (n = n(), perc_y = mean(y=="yes"))
 t_housing_y
 ```
+
+```{r housing IV}
+housing_woe <- bank0 %>%
+        select(housing, y) %>%
+        group_by(housing) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+housing_woe$woe <- log(housing_woe$perc_no / housing_woe$perc_y)
+housing_IV <- sum((housing_woe$perc_no - housing_woe$perc_y) * housing_woe$woe)
+```
+
 
 ##Loan
 
@@ -279,29 +315,26 @@ t_loan_y
 
 I volumi sono comunque significativi.
 
-##WOE variabili di profilo
-
-dovrò scrivere una funzione per calcolare l'information value.
-
-
-```{r}
-
-woe(Data=bank0,"job",FALSE,"y",10,Bad=0,Good=1)
-
-iv.mult(bank0,"y",vars=c("housing"))
-
-housing_woe <- bank0 %>%
-        select(housing, y) %>%
-        group_by(housing) %>%
+```{r loan IV}
+loan_woe <- bank0 %>%
+        select(loan, y) %>%
+        group_by(loan) %>%
         summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
         mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
         select (starts_with("perc"))
-
-housing_woe$woe <- log(housing_woe$perc_no / housing_woe$perc_y) # ok WOE
-
-#IV = sum((perc_no - perc_y) * housing_woe$woe
-
-sum((housing_woe$perc_no - housing_woe$perc_y) * housing_woe$woe) # corretto
-
+loan_woe$woe <- log(loan_woe$perc_no / loan_woe$perc_y)
+loan_IV <- sum((loan_woe$perc_no - loan_woe$perc_y) * loan_woe$woe)
 ```
+
+##WOE
+```{r all IV}
+names(bank0)
+IV <- c(age_class_IV, job_IV, marital_IV, education_IV, default_IV, balance_class_IV, housing_IV, loan_IV)
+Variables <- c("age_class", "job", "marital", "education", "default", "balance_class", "housing", "loan")
+IV_all <- data.frame(Variables, IV)
+IV_all <- IV_all %>%
+        arrange(desc(IV))
+```
+
+
 

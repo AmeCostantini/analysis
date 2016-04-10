@@ -1,0 +1,170 @@
+---
+title: "EDA_banking_univariate_contacts"
+author: "Americo"
+date: "10 aprile 2016"
+output: html_document
+---
+
+#Variabili di Contatto
+
+##Contact
+
+```{r contact graph}
+g_contact  <- ggplot(bank0, aes(x = contact)) +
+        geom_bar()
+g_contact
+g_contact_y  <- ggplot(bank0, aes(x = contact, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_contact_y
+```
+
+Però, se la tipologia di contatto è sconosciuta non converte quasi nessuno, con cellulare più della media, e anche con telefono. buono a sapersi, ma che vorrà dire?
+
+```{r contact table}
+t_contact_y <- bank0 %>%
+        group_by (contact) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_contact_y
+```
+
+
+```{r contact IV}
+contact_woe <- bank0 %>%
+        select(contact, y) %>%
+        group_by(contact) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+contact_woe$woe <- log(contact_woe$perc_no / contact_woe$perc_y)
+contact_IV <- sum((contact_woe$perc_no - contact_woe$perc_y) * contact_woe$woe)
+```
+
+Finora la variabile più predittiva!
+
+##Day
+
+La trasformo in fattore, 31 livelli su 45000 osservazioni: ha senso
+
+```{r day graph}
+g_day  <- ggplot(bank0, aes(x = factor(day))) +
+        geom_bar()
+g_day
+g_day_y  <- ggplot(bank0, aes(x = factor(day), fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_day_y
+```
+
+Distribuzione trimodale, abbastanza strana. 
+
+```{r day table}
+t_day_y <- bank0 %>%
+        group_by (day) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_day_y
+```
+
+I due giorni di maggior conversione sono quelli con i minori contatti. Credo bassa predittività.
+
+```{r day IV}
+day_woe <- bank0 %>%
+        select(day, y) %>%
+        group_by(day) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+day_woe$woe <- log(day_woe$perc_no / day_woe$perc_y)
+day_IV <- sum((day_woe$perc_no - day_woe$perc_y) * day_woe$woe)
+```
+
+Bassa ma non bassissima.
+
+##Month
+
+```{r month graph}
+levels(bank0$month)
+class(bank0$month)
+bank0$month <- factor(bank0$month, levels = c("jan","feb","mar", "apr","may","jun", "jul","aug", "sep", "oct", "nov","dec"))
+g_month  <- ggplot(bank0, aes(x = month)) +
+        geom_bar()
+g_month
+g_month_y  <- ggplot(bank0, aes(x = month, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_month_y
+```
+
+Distribuzione molto concentrata in estate, con grande conversio nei mesi primaverili e autunnali. Perché? Pochissimi contatti, non più di centinaia. Il mese con più contatti ha la conversion più bassa. Potrebbe dipendendere dal fatto che minori quanttà di telefonate permettono maggiore qualità di vendita (vedi duration)? Forse, ma anche la stagionalità ha la sua parte. Chi pensa al futuro all'avvicinarsi dell'estate?
+
+
+```{r month table}
+t_month_y <- bank0 %>%
+        group_by (month) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_month_y
+```
+
+I due giorni di maggior conversione sono quelli con i minori contatti. Credo bassa predittività.
+
+```{r month IV}
+month_woe <- bank0 %>%
+        select(month, y) %>%
+        group_by(month) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+month_woe$woe <- log(month_woe$perc_no / month_woe$perc_y)
+month_IV <- sum((month_woe$perc_no - month_woe$perc_y) * month_woe$woe)
+```
+
+Varibile più predittiva finora!
+
+
+##Duration
+
+```{r duration graph}
+g_duration <- ggplot(bank0, aes(x = 1, y = duration)) + 
+        geom_boxplot()
+g_duration
+
+g_duration_y <- ggplot(bank0, aes(x = y, y = duration)) + 
+        geom_boxplot()
+g_duration_y
+```
+
+A chiamate più lunghe corrisponde una maggiore propensione alla conversion! Da capire se si fa riferimento alla penultima o all'ultima chiamata (credo la penultima sennò non avrebbe senso utilizzarla in un modello predittivo).
+Se è la penultima chiamata, si può immaginare che o un cliente di suo interessato ti tenga dipiù al telefono o che un venditore che lo tiene di più al telefono lo invoglia a comprare. Se l'ultima chiamata, be, c'è da valutae l'aumento dei tempi dovuto all'informativa legale e alla parte sottoscrittiva. Andrà analizzato comunque il rapporto con giorno e mese, perché in quelle varaiabili bassi volumi (poche chiamate, chiamate molto lunghe?) portavano alta conversion. 
+
+
+```{r duration class table}
+t_duration_class_y <- bank0 %>%
+        mutate(duration_class = ntile(duration, 10)) %>%
+        group_by (duration_class) %>%
+        summarise(n(), mean(y == "yes"))
+```
+
+```{r duration class graph}
+bank0  <- bank0 %>%
+        mutate(duration_class = ntile(duration, 10))
+
+g_duration_class_y <- ggplot(bank0, aes(x = factor(duration_class), fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_duration_class_y
+```
+
+Esatto. al crescere della durata della chiamata cresce la quota di coloro che sottoscrivono, o viceversa.
+
+```{r duration IV} 
+duration_class_woe <- bank0 %>%
+        select(duration_class, y) %>%
+        group_by(duration_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+duration_class_woe$woe <- log(duration_class_woe$perc_no / duration_class_woe$perc_y)
+duration_class_IV <- sum((duration_class_woe$perc_no - duration_class_woe$perc_y) * duration_class_woe$woe)
+```
+
+Ampiamente la più predittiva.
