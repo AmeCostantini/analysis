@@ -1,0 +1,208 @@
+---
+title: "EDA_campaign_univariate_contacts"
+author: "Americo"
+date: "10 aprile 2016"
+output: html_document
+---
+
+
+##Campaign
+
+```{r campaign graph}
+g_campaign <- ggplot(bank0, aes(x = 1, y = campaign)) + 
+        geom_boxplot()
+g_campaign
+
+g_campaign_y <- ggplot(bank0, aes(x = y, y = campaign)) + 
+        geom_boxplot()
+g_campaign_y
+```
+
+Non mi sembra discrimini molto il numero di contatti precedenti.
+
+```{r campaign class table}
+t_campaign_class_y <- bank0 %>%
+        mutate(campaign_class = ntile(campaign, 10)) %>%
+        group_by (campaign_class) %>%
+        summarise(n(), media = mean(y == "yes"))
+```
+
+```{r campaign class graph}
+bank0  <- bank0 %>%
+        mutate(campaign_class = ntile(campaign, 10))
+
+g_campaign_class_y <- ggplot(bank0, aes(x = factor(campaign_class), fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_campaign_class_y
+```
+
+Andamento normale. La maggiore conversion si ha per tar il 30 e il quarantesimo percentile di contatti (da capire quanti contatti sono).
+
+
+```{r campaign IV}
+campaign_class_woe <- bank0 %>%
+        select(campaign_class, y) %>%
+        group_by(campaign_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+campaign_class_woe$woe <- log(campaign_class_woe$perc_no / campaign_class_woe$perc_y)
+campaign_class_IV <- sum((campaign_class_woe$perc_no - campaign_class_woe$perc_y) * campaign_class_woe$woe)
+```
+
+0.58, abbastanza predittiva.
+
+##pdays
+
+Considerando che questa variabile include info quantitative (giorni dall'ultima campagna) e qualitativa (contattato si/no) procederò subito con una fattorializzazione.
+
+```{r pdays graph}
+
+g_pdays_quant <- bank0  %>% 
+        filter(pdays != -1) %>% 
+        ggplot(aes(x = 1, y = pdays)) + geom_boxplot()
+
+g_pdays_quant_y <- bank0  %>% 
+        filter(pdays != -1) %>% 
+        ggplot(aes(x = y, y = pdays)) + geom_boxplot()
+```
+ 
+Per chi è stato contattato in passato, è evidente che se è passato meno tempo tende a convertire di pià. 
+
+Proviamo un raggruppamento in classi. Potrei fare una classe per i mai contattati e poi 10 classi di pari frequenza.
+
+```{r pdays class table}
+pdays_quantile <- quantile(bank0$pdays[bank0$pdays != -1], probs = seq(0.1,1,0.1))
+bank0$pdays_class <- cut(bank0$pdays, breaks = c(-2, 0, pdays_quantile), right = TRUE, labels = c("no campaign", "(0,91]",  "(91,108]", "(108,159]", "(159,181]"," (181,194]", "(194,258]", "(258,300]", "(300,343]", "(343,362]", "(362,871]"))
+table(bank0$pdays_class)
+#le classi non sono di uguale numerosità, ma è normale perché ci sono numeri che si ripetono. ntile infatti crea classi di uguale numerosità in cui uno stesso valore può stare in due classi diverse. non va bene.
+```
+
+```{r pdays_class graph}
+g_pdays_class  <- ggplot(bank0, aes(x = pdays_class)) +
+        geom_bar()
+g_pdays_class#ovvio
+
+g_pdays_class_y  <- ggplot(bank0, aes(x = pdays_class, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_pdays_class_y
+```
+
+Variabile molto predittiva con andamento un po' anomalo. Molta conversione per pochi giorni trascorsi, poi meno, poi risale.
+
+```{r pdays_class IV}
+pdays_class_woe <- bank0 %>%
+        select(pdays_class, y) %>%
+        group_by(pdays_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+pdays_class_woe$woe <- log(pdays_class_woe$perc_no / pdays_class_woe$perc_y)
+pdays_class_IV <- sum((pdays_class_woe$perc_no - pdays_class_woe$perc_y) * pdays_class_woe$woe)
+```
+
+0.34. Buona predittività.
+
+##Previous
+
+```{r previous graph}
+
+g_previous_quant <- ggplot(bank0, aes(x = 1, y = previous)) + 
+        geom_boxplot()
+g_previous_quant
+
+g_previous_quant_y <- ggplot(bank0, aes(x = y, y = previous)) + 
+        geom_boxplot()
+g_previous_quant_y
+
+```
+
+Quasi nessuno è stato contattato, è una distribuzione fortemente asimettrica. Provo a fare i medesimi grafici togliendo il valore zero.
+
+```{r previous_nz graph}
+
+g_previous_nz_quant <- bank0  %>% 
+        filter(previous > 0) %>% 
+        ggplot(aes(x = 1, y = previous)) + geom_boxplot()
+g_previous_nz_quant
+
+g_previous_nz_quant_y <- bank0  %>% 
+        filter(previous > 0) %>% 
+        ggplot(aes(x = y, y = previous)) + geom_boxplot()
+g_previous_nz_quant_y
+```
+
+Comunque tutti valori molto molto bassi.
+
+Anche qui provo un raggruppamento in classi, 0 e non 0.
+ 
+```{r previous class table}
+previous_quantile <- quantile(bank0$previous[bank0$previous > 0], probs = seq(0.1,1,0.1))
+#Considerando i decili, preferisco fare 7 classi di non pari frequenza: da 0 a 6 e maggiore di 6
+bank0$previous_class <- cut(bank0$previous, breaks = c(0, 1, 2, 3, 4, 5, 7, max(bank0$previous)+1), right = FALSE, labels = c("0 contact", "1 contact",  "2 contact", "3 contact", "4 contact","5 or 6 contact", "+ 6 contact"))
+table(bank0$previous_class)
+summary(bank0$previous_class)#no NA
+#le classi non sono di uguale numerosità, ma è normale perché ci sono numeri che si ripetono. ntile infatti crea classi di uguale numerosità in cui uno stesso valore può stare in due classi diverse. non va bene.
+```
+
+```{r previous_class graph}
+g_previous_class  <- ggplot(bank0, aes(x = previous_class)) +
+        geom_bar()
+g_previous_class #6 contact è classe davvero poco numerosa, non so se ricondurla a 5 o più => yes
+
+g_previous_class_y  <- ggplot(bank0, aes(x = previous_class, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_previous_class_y
+```
+
+Variabile molto predittiva , tendenzialmente più contatti ci sono stati per la precedente campagna più si converte per questa. Chiaro, è gente interessata che forse ha anche convertito per la precedente campagna (da analizzare la correlazione tra previos e poutcome)
+
+```{r previous_class IV}
+previous_class_woe <- bank0 %>%
+        select(previous_class, y) %>%
+        group_by(previous_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+previous_class_woe$woe <- log(previous_class_woe$perc_no / previous_class_woe$perc_y)
+previous_class_IV <- sum((previous_class_woe$perc_no - previous_class_woe$perc_y) * previous_class_woe$woe)
+```
+
+0.22 discreta predittività.
+
+##Poutcome
+
+```{r poutcome graph}
+g_poutcome  <- ggplot(bank0, aes(x = poutcome)) +
+        geom_bar()
+g_poutcome
+g_poutcome_y  <- ggplot(bank0, aes(x = poutcome, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_poutcome_y
+```
+
+Unknown saranno i zero contact e i no camaign. Lo capirò analizzando la relazione tra queste variabili. Ovviamente per chi ha convertito la scora volta grande conversion anche stavolta.
+
+```{r poutcome table}
+t_poutcome_y <- bank0 %>%
+        group_by (poutcome) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_poutcome_y
+```
+
+```{r poutcome IV}
+poutcome_woe <- bank0 %>%
+        select(poutcome, y) %>%
+        group_by(poutcome) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+poutcome_woe$woe <- log(poutcome_woe$perc_no / poutcome_woe$perc_y)
+poutcome_IV <- sum((poutcome_woe$perc_no - poutcome_woe$perc_y) * poutcome_woe$woe)
+```
+
+0.51, molto predittiva, ovviamente.

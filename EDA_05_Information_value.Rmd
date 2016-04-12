@@ -1,0 +1,29 @@
+---
+title: "Information value"
+author: "Americo"
+date: "12 aprile 2016"
+output: html_document
+---
+
+##WOE
+
+Creiamo il vettore dell'information value e mettiamolo in un grafico a barre
+
+```{r all IV table}
+names(bank0)
+IV <- c(age_class_IV, job_IV, marital_IV, education_IV, default_IV, balance_class_IV, housing_IV, loan_IV, contact_IV, day_IV, month_IV, duration_class_IV, campaign_class_IV, pdays_class_IV, previous_class_IV, poutcome_IV)
+Variables <- c("age_class", "job", "marital", "education", "default", "balance_class", "housing", "loan", "contact", "day", "month", "duration_class", "campaign_class", "pdays_class", "previous_class", "poutcome")
+t_IV_all <- data.frame(Variables, IV)
+t_IV_all <- t_IV_all %>%
+        arrange(desc(IV))
+```
+
+```{r all IV graph}
+g_IV_all <- ggplot(t_IV_all, aes(x= reorder(Variables, IV), y= IV)) +
+  geom_bar(stat='identity') +
+  coord_flip()
+g_IV_all
+```
+
+Duration class è la più sospetta, troppo predittiva. Può darsi che i miei sospetti sul fatto che si riferisca alla chiamata di chiusura siano veri.
+

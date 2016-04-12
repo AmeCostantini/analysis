@@ -326,15 +326,6 @@ loan_woe$woe <- log(loan_woe$perc_no / loan_woe$perc_y)
 loan_IV <- sum((loan_woe$perc_no - loan_woe$perc_y) * loan_woe$woe)
 ```
 
-##WOE
-```{r all IV}
-names(bank0)
-IV <- c(age_class_IV, job_IV, marital_IV, education_IV, default_IV, balance_class_IV, housing_IV, loan_IV)
-Variables <- c("age_class", "job", "marital", "education", "default", "balance_class", "housing", "loan")
-IV_all <- data.frame(Variables, IV)
-IV_all <- IV_all %>%
-        arrange(desc(IV))
-```
 
 
 
