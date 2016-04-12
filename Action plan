@@ -1,11 +1,14 @@
 
 #Analisi esplorativa
 
-Forse divisa tra variabili di profilo e variabili di campaign
+##Analisi univariata:
 
-*comprensione delle variabili
-*distribuzione univariata (grafica e numerica) e bivariata con y
-*analisi tra le variabili di input alla ricerca di confounding e correlazione
-*ODDS ratio e WOE di ogni variabile di input
-*WOE (tabellare e grafica) e IV
-*analisi trivariate
+* Analisi univariata della relazione tra variabili di profilo e y e calcolo dell'IV
+* Analisi univariata della relazione tra variabili di contatto e y e calcolo dell'IV
+* Analisi univariata della relazione tra variabili di campagna e y e calcolo dell'IV
+* grafico e tabella dell'IV d tutte le variabili
+
+##Analisi bivariata
+
+* vedi issue di confounding=> fai distribuzione bivariata e calcola ODDS ratio come da libro
+
