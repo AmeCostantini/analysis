@@ -18,6 +18,8 @@ t_IV_all <- t_IV_all %>%
         arrange(desc(IV))
 ```
 
+Nota su duration: ho scoperto da uno studio su internet che duration fa riferimento alla chiamata di chiusura; perciò non è utilizzabile ai nostri fini, e l'information value sopra lo 0.5, anzi, sopra l'unità la rendeva una variabile assai sospetta. Quindi non la includeremo.
+
 ```{r all IV graph}
 g_IV_all <- ggplot(t_IV_all, aes(x= reorder(Variables, IV), y= IV)) +
   geom_bar(stat='identity') +

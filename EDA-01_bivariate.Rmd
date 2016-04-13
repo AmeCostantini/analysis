@@ -1,0 +1,89 @@
+---
+title: "EDA_01_bivariate"
+author: "Americo"
+date: "12 aprile 2016"
+output: word_document
+---
+#GGpairs
+
+```{r}
+#bank0_ggpairs <- ggpairs(bank0_sm) non è venuto bene
+```
+
+#Il confounding
+
+Il concetto di confounding è il seguente: data una apparente relazione tra una variabile esplicativa e una di risposta, in realtà la relazione è spiegata almeno parzialmente da una relazione CAUSALE tra la variabile di confounding, la causa, e entrambi gli effetti.
+
+Questo accade se c'è una associazione tra confounder e variabile dipendente e confounder a variabile esplicativa; di solito si comincia a sospettare di confounding se tra i livelli della variabile dipendente il confounder varia (ad es le proporzioni) in maniera sistematica e non equa (nel caso di specie, tutti gli esiti unknown sono al livello 0contact).
+
+L'analisi stratifica (condizionare la relazione tra x e y per il confounder z) ci permette di vedere la relazione a parità di valore di confounder, annacquandone gli effetti di variabilità. se la relazione cambia (con variabile dicotomiche puoi confrontare gli ODSS ratio, sennò confrontare le proporzioni), allora c'è confounding.
+
+Se c'è confounding non vuol dire che l'associazione tra x e y è falsa, ma parzialmente spiegata da altro; in un modello il confounder va sempre icluso come variabile di controllo per adeguatamente spiegare la relazione tra x e y (il calcolo dei coefficienti).
+
+##previous e poutcome
+
+In questo caso sia il numero di contatti della precedente campagna che l'esito della precedente campagna sono predittive. Solo che osservando che al crescere dei contatti della precedente campagna cresce la conversion dell'attuale, mi domando se in realtà non sia l'esito della precedente campagna a determinare entrambi. 
+
+
+```{r previos_poutcome_y table}
+t_previous_y <- bank0 %>%
+        group_by(previous_class) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(freq_rel = n / sum(n)) %>%
+        select(previous_class, y_rate)
+
+t_previous_poutcome_y <- bank0 %>%
+        group_by(previous_class, poutcome) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(freq_rel = n / sum(n)) %>%
+        select(previous_class, poutcome, y_rate) %>%
+        spread(previous_class, y_rate)
+
+g_previous_class_poutcome_f <- g_previous_class + facet_wrap(~poutcome)
+g_previous_class_poutcome <- ggplot(bank0, aes(x = factor(previous_class), fill = poutcome)) +
+        geom_bar(position = "fill")
+g_previos_poutcome_y <- g_previous_class_y + facet_wrap(~poutcome)
+```
+
+Ora, per ogni esito della precedente campagna, il numero dei contatti non discrimina, tranne che per esito sconosciuto, che però coincide con contati zero, cioè nessuna partecipazione alla precedente campagna. Perciò la mia ipotesi era esatta, probabilmente basta includere la variabile poutcome.
+Come controprova, faccio il condizionamento al contrario:
+
+```{r}
+g_poutcome_previos_y <- g_poutcome_y + facet_wrap(~previous_class)
+g_poutcome_previos_y
+```
+
+Per ogni contatto c'è una bella discriminazione della conversion, perciò la mia ipotesi era esatta. è la predispozione a convertire nella veccia campagna che determina il numero di contatti e la nuova conversion.
+
+*La conclusione è che se includeremo nel modello previous andrebbe incluso anche poutcome, a prescindere dal suo p.value*.
+
+##Age e job
+
+```{r age job graph}
+g_age_class <- ggplot(bank0, aes(x = age_class)) + 
+        geom_bar()
+g_age_class_y <- ggplot(bank0, aes(x = age_class, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_age_class_y
+g_job
+g_job_y
+
+g_job_age_class <- ggplot(bank0, aes(x = job, fill = age_class)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_job_age_class
+#distribuzione molto sbilanciata, probabile che age sia confounding
+
+g_job_age_class_y <- ggplot(bank0, aes(x = job, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~age_class) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+g_job_age_class_y
+```
+
+La proporzione delle fasce di età nei job mostra squilibri; ci sono molte professioni dove quasi tutti sono asulti, gli studenti poi sono quasi tutti giovani e i pensionati sono metà adulti e metà anziani. mentre la relazione tra job e conversion ci dice che i pensionati convertono di più, controllando per l'età vediamo che convertono non se pensionati, ma se pensionati vecchi. se vai in pensione adulto non converti. quindi l'essere in pensione non è poi così legato al sottoscrivere depositi. invece gli studenti convertono anche se adulti; se si osserva la conversion per fasce di età, gli adulti convertono nella media; se invece sei adulto ma studente converti più della media, perciò essere studente è legato al convertire.
+
+D'altronde (ignorando per un attimo il problema dei volumi bassi) se sei anziano converti qualunque sia il tuo lavoro, anche se marginalmente è un lavoro che non converte; perciò gli anziani convertono in quanto anziani e i pensionati convertono perché la proporzione di anziani in essi è alta.

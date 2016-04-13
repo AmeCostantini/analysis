@@ -37,7 +37,7 @@ g_campaign_class_y <- ggplot(bank0, aes(x = factor(campaign_class), fill = y)) +
 g_campaign_class_y
 ```
 
-Andamento normale. La maggiore conversion si ha per tar il 30 e il quarantesimo percentile di contatti (da capire quanti contatti sono).
+Andamento normale. La maggiore conversion si ha per tra il 30 e il quarantesimo percentile di contatti (da capire quanti contatti sono).
 
 
 ```{r campaign IV}
