@@ -1,14 +1,20 @@
 
 #Analisi esplorativa
 
-##Analisi univariata:
+##Analisi univariata e bivariata:
 
-* Analisi univariata della relazione tra variabili di profilo e y e calcolo dell'IV
-* Analisi univariata della relazione tra variabili di contatto e y e calcolo dell'IV
-* Analisi univariata della relazione tra variabili di campagna e y e calcolo dell'IV
-* grafico e tabella dell'IV d tutte le variabili
+* Analisi univariata della relazione tra variabili di profilo e y e calcolo dell'IV  *V*
+* Analisi univariata della relazione tra variabili di contatto e y e calcolo dell'IV *V*
+* Analisi univariata della relazione tra variabili di campagna e y e calcolo dell'IV *V*
+* grafico e tabella dell'IV d tutte le variabili *V*
 
 ##Analisi bivariata
 
-* vedi issue di confounding=> fai distribuzione bivariata e calcola ODDS ratio come da libro
+* rileggere i link utili e il paragrafo che ho copiato da internet e rivedere le analisi / commenti fatti alla luce delle nuove nozioni di analisi stratificata, specificazione, interazione
+* terminare le analisi trivariate come da issues (anche se in realtà forse confounding non c'è mai
 
+##Model selection
+
+* esprimere una prima variable selection basata sulo sul judgement e sull'analisi esplorativa
+
+#Modello
