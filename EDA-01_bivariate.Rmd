@@ -10,7 +10,7 @@ output: word_document
 #bank0_ggpairs <- ggpairs(bank0_sm) non è venuto bene
 ```
 
-#Il confounding
+#Il confounding - mie riflessioni iniziali
 
 Il concetto di confounding è il seguente: data una apparente relazione tra una variabile esplicativa e una di risposta, in realtà la relazione è spiegata almeno parzialmente da una relazione CAUSALE tra la variabile di confounding, la causa, e entrambi gli effetti.
 
@@ -19,6 +19,21 @@ Questo accade se c'è una associazione tra confounder e variabile dipendente e c
 L'analisi stratifica (condizionare la relazione tra x e y per il confounder z) ci permette di vedere la relazione a parità di valore di confounder, annacquandone gli effetti di variabilità. se la relazione cambia (con variabile dicotomiche puoi confrontare gli ODSS ratio, sennò confrontare le proporzioni), allora c'è confounding.
 
 Se c'è confounding non vuol dire che l'associazione tra x e y è falsa, ma parzialmente spiegata da altro; in un modello il confounder va sempre icluso come variabile di controllo per adeguatamente spiegare la relazione tra x e y (il calcolo dei coefficienti).
+
+#Tre tipologie di relazione tra tre variabili
+Forniamo un breve commento ai tre esempi che seguono. Al punto 1 presentiamo la situazione detta “spiegazione” La tab. 3 mostra la tabella a doppia entrata originale che mette in relazione il numero delle pompe antincendio presenti sul luogo di un incendio e l’entità dei danni dello stesso. Come si vede tra le due variabili vi è relazione: solo il 30% degli incidenti è caratterizzato da danni superiori a 10.000$ se le autopompe non sono più di 2, sale al 59% se le autopompe sono più di 2. Naturalmente il numero di autopompe che vengono inviate sul luogo dell’incendio sarà legato alle dimensioni dell’incendio stesso e quindi al presumibile danno prodotto. Quindi occorre controllare la relazione originale introducendo la variabile “dimensione dell’incendio”. Si vede così in tab 1 che a parità di dimensioni dell’incendio, non vi è alcuna relazione tra numero di autopompe e ammontare del danno: se le dimensioni sono ridotte solo il 5% degli incendi produce un danno superiore a 10.000$, indipendentemente dal numero di autopompe presenti; questa percentuale sale all’80% quando l’incendio è di ampie dimensioni, anche qui indipendentemente dal numero di autopompe coinvolte. E’ ovvio che il numero di autopompe non può determinare le dimensioni dell’incendio, ma ne è una sua conseguenza. Il numero di autopompe non determina neppure l’ammontare dei danni. In realtà le dimensioni causano sia il numero di autopompe che l’ammontare del danno, così che la relazione tra autopompe e danno è fittizia, dovuta esclusivamente alla terza variabile, perciò spuria.
+La tab. 2 è stata riportata per mostrare come possono essere presentati i dati di tab. 1 in forma compatta. Notate che la variabile “ammontare del danno” non compare più esplicitamente nella tabella, in quanto sono riportati solo i dati relativi ad ammontare superiore a 10.000$. Notate inoltre che non compare più il totale percentuale pari a 100 in nessuna riga o colonna. Notate infine che il titolo contiene l’indicazione di tutte e tre le variabili coinvolte (va naturalmente letto con attenzione). 
+Al punto 2 presentiamo la situazione detta “interpretazione” La tab. 6 mostra la tabella a doppia entrata originale che mette in relazione sesso e coinvolgimento in incidenti. Come si vede le donne hanno meno incidenti dei maschi: 32% e 44% rispettivamente. Bisogna però considerare che, al di là della prudenza e delle capacità di guida, il semplice fatto di percorrere mediamente più chilometri espone ad una probabilità maggiore di incorrere in incidenti. Se introduciamo come terza variabile la percorrenza chilometrica annua (tab. 4) vediamo che la relazione tra sesso e incidenti sparisce: se la percorrenza è bassa il 25% dei conducenti è coinvolto in incidenti qualunque sia il suo sesso; se la percorrenza è alta questa percentuale sale al 52% sia tra i maschi che tra le femmine. A prima vista, la relazione tra sesso e incidenti potrebbe apparire spuria come nell’esempio precedente. Qui però vi è una differenza fondamentale: la terza variabile non è la causa delle due variabili originali (la percorrenza non causa il sesso del conducente). Siamo invece in presenza di una catena causale: il sesso causa la percorrenza che a sua volta causa il coinvolgimento in incidenti. Insomma la relazione tra sesso e incidenti non è fittizia, appare a prima vista incomprensibile perché è mediata da una variabile intermedia, la percorrenza. E’ in questo senso che si dice che la relazione originale è interpretata. Anche qui forniamo la tab. 5, forma compatta della tab. 4.
+Al punto 3 presentiamo la situazione detta “specificazione” La tab. 9 mostra la tabella a doppia entrata originale che mette in relazione orientamento politico e interesse per la politica. La tab. 7 mostra cosa accade quando introduciamo come variabile di controllo il titolo di studio. In origine tra coloro che si collocano a sinistra il 28% ha un interesse alto, che scende al 15% tra i soggetti di destra. Questa differenza resta anche quando si introduce la terza variabile. Bisogna però notare che tra coloro che hanno un basso grado di istruzione i valori sono pari a 19% e 7%, cioè valori più bassi di quelli della relazione bivariata e con una differenza tra sinistra e destra equivalente. Tra coloro invece che hanno un elevato titolo di studio l’interesse per la politica aumenta: coloro che sono molto interessati crescono rispettivamente al 36% e al 18%, rispettivamente per sinistra e destra, con una differenza tra i due pari a 18 punti percentuali, contro i 13 della relazione originaria. Qui entrambe le variabili “orientamento” e “titolo” influenzano la dipendente ed è per questo che si parla di “specificazione” della relazione originale.
+
+#Link utili
+
+* [epidemiologia1](http://www.quadernodiepidemiologia.it/epi/freq/stn_mis.htm)
+* [epidemiologia2](http://www.quadernodiepidemiologia.it/epi/assoc/ass_nc.htm)
+* [confounding and interaction](https://www.ctspedia.org/do/view/CTSpedia/InterConfound)
+* [stratified analysis - il più importante](http://www.sjsu.edu/faculty/gerstman/StatPrimer/stratified.PDF)
+
+L'ultimo link, un pdf, è semplicemente illuminante. Così come il paragrafo che ho copiato sopra.
 
 ##previous e poutcome
 
@@ -84,6 +99,66 @@ g_job_age_class_y <- ggplot(bank0, aes(x = job, fill = y)) +
 g_job_age_class_y
 ```
 
-La proporzione delle fasce di età nei job mostra squilibri; ci sono molte professioni dove quasi tutti sono asulti, gli studenti poi sono quasi tutti giovani e i pensionati sono metà adulti e metà anziani. mentre la relazione tra job e conversion ci dice che i pensionati convertono di più, controllando per l'età vediamo che convertono non se pensionati, ma se pensionati vecchi. se vai in pensione adulto non converti. quindi l'essere in pensione non è poi così legato al sottoscrivere depositi. invece gli studenti convertono anche se adulti; se si osserva la conversion per fasce di età, gli adulti convertono nella media; se invece sei adulto ma studente converti più della media, perciò essere studente è legato al convertire.
+La proporzione delle fasce di età nei job mostra squilibri; ci sono molte professioni dove quasi tutti sono adulti, gli studenti poi sono quasi tutti giovani e i pensionati sono metà adulti e metà anziani. mentre la relazione tra job e conversion ci dice che i pensionati convertono di più, controllando per l'età vediamo che convertono non se pensionati, ma se pensionati vecchi. se vai in pensione adulto non converti. quindi l'essere in pensione non è poi così legato al sottoscrivere depositi. invece gli studenti convertono anche se adulti; se si osserva la conversion per fasce di età, gli adulti convertono nella media; se invece sei adulto ma studente converti più della media, perciò essere studente è legato al convertire.
 
 D'altronde (ignorando per un attimo il problema dei volumi bassi) se sei anziano converti qualunque sia il tuo lavoro, anche se marginalmente è un lavoro che non converte; perciò gli anziani convertono in quanto anziani e i pensionati convertono perché la proporzione di anziani in essi è alta.
+
+##Age e marital
+
+```{r age and marital univariate graph}
+g_age
+g_age_y
+g_age_class
+g_age_class_y
+g_marital
+g_marital_y
+```
+
+Voglio capire se i single convertono in quanto giovani, con l'età a fare da confounder.
+
+```{r age and marital bivariate graph}
+g_marital_age_class <- ggplot(bank0, aes(x = marital, fill = age_class)) + 
+        geom_bar(position = "fill") 
+g_marital_age_class
+#infatti la proporzione di giovani nei single è altissima, negli altri due casi lo stato maritale e l'età sono quasi indipendenti
+g_marital_age_class_y <- ggplot(bank0, aes(x = marital, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~age_class)
+g_marital_age_class_y
+
+
+```
+
+
+```{r age and marital bivariate table}
+t_marital_age_class <- bank0 %>%
+        group_by(marital, age_class) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(freq_rel = n / sum(n))
+
+t_marital_age_class_y <- bank0 %>%
+        group_by(marital, age_class) %>%
+        summarise(y_rate = mean(y == "yes")) %>%
+        select(marital, age_class, y_rate) %>%
+        spread(marital, y_rate)
+t_marital_y
+```
+
+Gli anziani single sono 61, quindi la predittività è poco significativa. 
+
+La mia ipotesi di partenza è che i single convertissero in quanto giovani. L'ipotesi sembra confermata; innanzitutto la proporzione di giovani tra i single è molto più alta che negli altri due stati maritali, dove la proporzione è quasi identica (e ci può stare, e dove non è identica è perché in divorced ci sono anche i vedovi). Analizzando poi il comportamento dei tre stati per ogni fascia di età, si vede che se sei giovane converti solo se sei anche single, se sei giovane ma sposato (2060 casi) non converti. Quindi l'età non fa da confounder, ma c'è qualcosa come un effetto di interazione, perché nella fascia giovanile la conversion dei single è potenziata rispetto a quella complessiva, per quanto il trend sia identico (minor conversion gli sposati, maggiore i single). Ma in realtà abbiamo scoperto che i giovani convertono solo se single. Gli anziani convertono assai, come è ovvio, ma il comportamento dei tre stati maritali (per quanto i numeri siano bassi) si invertono.
+
+Gli adulti si comportano poco peggio del portafoglio, e ne sono la gran parte, con un comportamento dei 3 stati maritali simile al portafoglio.
+
+Ma non sarà che è lo stato maritale a fare da confounding?
+
+```{r}
+g_age_class_marital_y <- ggplot(bank0, aes(x = age_class, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~marital)
+g_age_class_marital_y
+```
+
+Non abbiamo trovato confounding, ma una relazione di interazione, che ci fa dire soprattutto che i giovani che convertono sono i single. Si potrebbe pensare di includere un effetto di interazione nel modello.
