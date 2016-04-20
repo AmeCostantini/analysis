@@ -10,16 +10,6 @@ output: word_document
 #bank0_ggpairs <- ggpairs(bank0_sm) non è venuto bene
 ```
 
-#Il confounding - mie riflessioni iniziali
-
-Il concetto di confounding è il seguente: data una apparente relazione tra una variabile esplicativa e una di risposta, in realtà la relazione è spiegata almeno parzialmente da una relazione CAUSALE tra la variabile di confounding, la causa, e entrambi gli effetti.
-
-Questo accade se c'è una associazione tra confounder e variabile dipendente e confounder a variabile esplicativa; di solito si comincia a sospettare di confounding se tra i livelli della variabile dipendente il confounder varia (ad es le proporzioni) in maniera sistematica e non equa (nel caso di specie, tutti gli esiti unknown sono al livello 0contact).
-
-L'analisi stratifica (condizionare la relazione tra x e y per il confounder z) ci permette di vedere la relazione a parità di valore di confounder, annacquandone gli effetti di variabilità. se la relazione cambia (con variabile dicotomiche puoi confrontare gli ODSS ratio, sennò confrontare le proporzioni), allora c'è confounding.
-
-Se c'è confounding non vuol dire che l'associazione tra x e y è falsa, ma parzialmente spiegata da altro; in un modello il confounder va sempre icluso come variabile di controllo per adeguatamente spiegare la relazione tra x e y (il calcolo dei coefficienti).
-
 #Tre tipologie di relazione tra tre variabili
 Forniamo un breve commento ai tre esempi che seguono. 
 
@@ -50,10 +40,9 @@ Stratification might reveal otherwise hidden confounding and interaction. Exampl
 Spesso c'è in parte confounding e in parte interaction. The best estimate of association is both valid and precise. If interaction is present, strata-specific measures of association are reported. If interaction is absent but confounding is present, summary (adjusted) measures of association are reported. If neither interaction nor confounding are present, crude (unadjusted) measures of association are reported. In general, the most parsimoniously unconfounded presentation of the data is preferred. If the association between the exposure and disease is not found by scrutinizing the data in the 2-by-2 table, it's hard to support. Simple is better. 
 Qui si parla di RR e di quale va riportato se c'è confounding e/o se c'è interaction.
 
-
 ##previous e poutcome
 
-In questo caso sia il numero di contatti della precedente campagna che l'esito della precedente campagna sono predittive. Solo che osservando che al crescere dei contatti della precedente campagna cresce la conversion dell'attuale, mi domando se in realtà non sia l'esito della precedente campagna a determinare entrambi. 
+In questo caso sia il numero di contatti della precedente campagna che l'esito della precedente campagna sono predittive. Solo che osservando che al crescere dei contatti della precedente campagna cresce la conversion dell'attuale, mi domando se in realtà non sia stato la predisposizione a convertire della precedente campagna a generare sia tanti contatti (mi faccio chiamare e risponso perché interessato) che l'attuale conversion (ero e sono interessato a sottoscrivere prodotti aggiuntivi).
 
 
 ```{r previos_poutcome_y table}
@@ -73,10 +62,11 @@ t_previous_poutcome_y <- bank0 %>%
 g_previous_class_poutcome_f <- g_previous_class + facet_wrap(~poutcome)
 g_previous_class_poutcome <- ggplot(bank0, aes(x = factor(previous_class), fill = poutcome)) +
         geom_bar(position = "fill")
-g_previos_poutcome_y <- g_previous_class_y + facet_wrap(~poutcome)
+g_previous_poutcome_y <- g_previous_class_y + facet_wrap(~poutcome)
+g_previous_class_y
 ```
 
-Ora, per ogni esito della precedente campagna, il numero dei contatti non discrimina, tranne che per esito sconosciuto, che però coincide con contati zero, cioè nessuna partecipazione alla precedente campagna. Perciò la mia ipotesi era esatta, probabilmente basta includere la variabile poutcome.
+Ora, per ogni esito della precedente campagna, il numero dei contatti discrimina molto meno che nella crude analysis (tranne che per esito sconosciuto, che però coincide con contati zero, cioè nessuna partecipazione alla precedente campagna). Perciò la mia ipotesi è abbastanza confermata, poutcome ci permette di interpretare abbastanza la relazione tra contatti e conversion.
 Come controprova, faccio il condizionamento al contrario:
 
 ```{r}
@@ -84,9 +74,9 @@ g_poutcome_previos_y <- g_poutcome_y + facet_wrap(~previous_class)
 g_poutcome_previos_y
 ```
 
-Per ogni contatto c'è una bella discriminazione della conversion, perciò la mia ipotesi era esatta. è la predispozione a convertire nella veccia campagna che determina il numero di contatti e la nuova conversion.
+Per ogni contatto c'è una bella discriminazione della conversion, perciò la mia ipotesi era esatta. è la predispozione a convertire nella vecchia campagna che contribuisce a determinare il numero di contatti e la nuova conversion.
 
-*La conclusione è che se includeremo nel modello previous andrebbe incluso anche poutcome, a prescindere dal suo p.value*.
+*La conclusione è che se includeremo nel modello previous andrebbe incluso anche poutcome, come variabile di controllo? Oppure basta poutcome? Mah, alla fine soprattutto per il livello failure, il numero di contatti discrimina, quindi includerei entrambe.*.
 
 ##Age e job
 
@@ -104,20 +94,23 @@ g_job_age_class <- ggplot(bank0, aes(x = job, fill = age_class)) +
         geom_bar(position = "fill") + 
         geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
 g_job_age_class
-#distribuzione molto sbilanciata, probabile che age sia confounding
+#distribuzione molto sbilanciata della variabile di controllo per i due livelli studenee pensionato, probabile che age aiuti a capire la relazione tra job e conversion.
 
 g_job_age_class_y <- ggplot(bank0, aes(x = job, fill = y)) + 
         geom_bar(position = "fill") + 
         geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
         facet_wrap(~age_class) +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
 g_job_age_class_y
 ```
 
-La proporzione delle fasce di età nei job mostra squilibri; ci sono molte professioni dove quasi tutti sono adulti, gli studenti poi sono quasi tutti giovani e i pensionati sono metà adulti e metà anziani. mentre la relazione tra job e conversion ci dice che i pensionati convertono di più, controllando per l'età vediamo che convertono non se pensionati, ma se pensionati vecchi. se vai in pensione adulto non converti. quindi l'essere in pensione non è poi così legato al sottoscrivere depositi. invece gli studenti convertono anche se adulti; se si osserva la conversion per fasce di età, gli adulti convertono nella media; se invece sei adulto ma studente converti più della media, perciò essere studente è legato al convertire.
+La proporzione delle fasce di età nei job mostra squilibri; ci sono molte professioni dove quasi tutti sono adulti, gli studenti poi sono quasi tutti giovani e i pensionati sono metà adulti e metà anziani. Mentre la relazione tra job e conversion ci dice che i pensionati convertono di più, controllando per l'età vediamo che convertono non se pensionati, ma se pensionati vecchi. Se vai in pensione adulto non converti. 
 
-D'altronde (ignorando per un attimo il problema dei volumi bassi) se sei anziano converti qualunque sia il tuo lavoro, anche se marginalmente è un lavoro che non converte; perciò gli anziani convertono in quanto anziani e i pensionati convertono perché la proporzione di anziani in essi è alta.
+Se ci limitiamo agli anziani, tutti i job convertono molto, ma comunque i pensionati di più. Quindi è chiaro che i pensionati crudamente convertono di più perché in essi la metà è anziana, ma comunque tra gli anziani i pensionati convertono più degli altri. Essere vecchio ti fa convertire, essere vecchio e in pensione ancora di più. Vi è una qualche interazione.
+
+Invece gli studenti convertono anche se adulti; se si osserva la conversion per fasce di età, gli adulti convertono nella media; se invece sei adulto ma studente converti più della media, perciò essere studente è legato al convertire a prescindere (in parte) dall'età.
+
+Il problema andrebbe complicato ragionando sui volumi bassi di alcuni sottogruppi.
 
 ##Age e marital
 
@@ -130,7 +123,7 @@ g_marital
 g_marital_y
 ```
 
-Voglio capire se i single convertono in quanto giovani, con l'età a fare da confounder.
+Voglio capire se i single convertono in quanto giovani, con l'età a fare da confounder o effect modifier.
 
 ```{r age and marital bivariate graph}
 g_marital_age_class <- ggplot(bank0, aes(x = marital, fill = age_class)) + 
@@ -142,8 +135,6 @@ g_marital_age_class_y <- ggplot(bank0, aes(x = marital, fill = y)) +
         geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
         facet_wrap(~age_class)
 g_marital_age_class_y
-
-
 ```
 
 
@@ -161,11 +152,11 @@ t_marital_age_class_y <- bank0 %>%
 t_marital_y
 ```
 
-Gli anziani single sono 61, quindi la predittività è poco significativa. 
+Gli anziani single sono 61, quindi la predittività è poco significativa.
 
-La mia ipotesi di partenza è che i single convertissero in quanto giovani. L'ipotesi sembra confermata; innanzitutto la proporzione di giovani tra i single è molto più alta che negli altri due stati maritali, dove la proporzione è quasi identica (e ci può stare, e dove non è identica è perché in divorced ci sono anche i vedovi). Analizzando poi il comportamento dei tre stati per ogni fascia di età, si vede che se sei giovane converti solo se sei anche single, se sei giovane ma sposato (2060 casi) non converti. Quindi l'età non fa da confounder, ma c'è qualcosa come un effetto di interazione, perché nella fascia giovanile la conversion dei single è potenziata rispetto a quella complessiva, per quanto il trend sia identico (minor conversion gli sposati, maggiore i single). Ma in realtà abbiamo scoperto che i giovani convertono solo se single. Gli anziani convertono assai, come è ovvio, ma il comportamento dei tre stati maritali (per quanto i numeri siano bassi) si invertono.
+La mia ipotesi di partenza è che i single convertissero in quanto giovani. L'ipotesi sembra confermata; innanzitutto la proporzione di giovani tra i single è molto più alta che negli altri due stati maritali, dove la proporzione è quasi identica (e ci può stare, e dove non è identica è perché in divorced ci sono anche i vedovi). Analizzando poi il comportamento dei tre stati per ogni fascia di età, si vede che se sei giovane converti solo se sei anche single, se sei giovane ma sposato (2060 casi) non converti. Quindi l'età non fa da confounder, ma da effect modifier, perché nella fascia giovanile la conversion dei single è potenziata rispetto a quella complessiva, per quanto il trend sia identico (minor conversion gli sposati, maggiore i single). Ma in realtà abbiamo scoperto che i giovani convertono solo se single. Gli anziani convertono assai, come è ovvio, ma il comportamento dei tre stati maritali (per quanto i numeri siano bassi) si invertono; anche qui c'è interazione! E di sicuro è dovuta allo specifico comportamento degli anziani vedovi.
 
-Gli adulti si comportano poco peggio del portafoglio, e ne sono la gran parte, con un comportamento dei 3 stati maritali simile al portafoglio.
+Nella fascia adulti i tre stati maritali convertono come per tutto il portafoglio, invece.
 
 Ma non sarà che è lo stato maritale a fare da confounding?
 
@@ -177,4 +168,9 @@ g_age_class_marital_y <- ggplot(bank0, aes(x = age_class, fill = y)) +
 g_age_class_marital_y
 ```
 
-Non abbiamo trovato confounding, ma una relazione di interazione, che ci fa dire soprattutto che i giovani che convertono sono i single. Si potrebbe pensare di includere un effetto di interazione nel modello.
+Non abbiamo trovato confounding, ma una relazione di interazione, che ci fa dire soprattutto che i giovani che convertono sono i single. *Si potrebbe pensare di includere un effetto di interazione nel modello*.
+
+##Education and job
+
+##Housing and loan
+

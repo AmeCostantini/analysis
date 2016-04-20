@@ -95,17 +95,20 @@ g_month_y  <- ggplot(bank0, aes(x = month, fill = y)) +
 g_month_y
 ```
 
-Distribuzione molto concentrata in estate, con grande conversio nei mesi primaverili e autunnali. Perché? Pochissimi contatti, non più di centinaia. Il mese con più contatti ha la conversion più bassa. Potrebbe dipendendere dal fatto che minori quanttà di telefonate permettono maggiore qualità di vendita (vedi duration)? Forse, ma anche la stagionalità ha la sua parte. Chi pensa al futuro all'avvicinarsi dell'estate?
+Distribuzione molto concentrata in estate, con grande conversion nei mesi primaverili e autunnali. Perché? Pochissimi contatti, non più di centinaia. Il mese con più contatti ha la conversion più bassa. Potrebbe dipendendere dal fatto che minori quanttà di telefonate permettono maggiore qualità di vendita (vedi duration)? Forse, ma anche la stagionalità ha la sua parte. Chi pensa al futuro all'avvicinarsi dell'estate?
 
 
 ```{r month table}
 t_month_y <- bank0 %>%
         group_by (month) %>%
-        summarise (n = n(), perc_y = mean(y=="yes"))
+        summarise (n = n(), perc_y = mean(y=="yes")) %>%
+        mutate (n_rel = n / sum(n)*100, n_rel_ind = 100/12) %>%
+        select(month, n, n_rel, n_rel_ind, perc_y)
 t_month_y
 ```
 
-I due giorni di maggior conversione sono quelli con i minori contatti. Credo bassa predittività.
+I  mesi di maggior conversione sono quelli con i minori contatti. Se anche l'information Value e il p.value sono favorevoli, potre non includere month perché non mi spiego l'associazione negativa tra conversion e volumi. Month è il mese di ultima chiamata, quella di chiusura. Il call center potrebbe aver fatto comunque molte chiamate non di chiusura nel mese, non è detto che maggio sia stato mese di maggior lavoro di dicembre. Tuttavia laddove si concentrano più ultime chiamate di chiusura si converte meno. Ci devo tornare a riflettere.
+
 
 ```{r month IV}
 month_woe <- bank0 %>%
