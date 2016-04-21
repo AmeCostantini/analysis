@@ -1,0 +1,136 @@
+---
+title: "Untitled"
+author: "Americo"
+date: "21 aprile 2016"
+output: html_document
+---
+
+studia http://www.inside-r.org/node/91537
+
+
+```{r glm1 not val 10}
+data_not_val_set10 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold9)
+glm1_not_val_set10 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set10)
+
+summary(glm1_not_val_set10)
+
+glm1_not_val_set10_predictions  <- predict(glm1_not_val_set10, data_not_val_set10, type="response")
+
+AUC_glm1_not_val_set10 <- roc(data_not_val_set10$y, glm1_not_val_set10_predictions, levels=c("no", "yes"))
+AUC_glm1_not_val_set10$auc
+```
+
+```{r glm1 not val 9}
+data_not_val_set9 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold10)
+glm1_not_val_set9 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set9)
+
+glm1_not_val_set9_predictions  <- predict(glm1_not_val_set9, data_not_val_set9, type="response")
+
+AUC_glm1_not_val_set9 <- roc(data_not_val_set9$y, glm1_not_val_set9_predictions, levels=c("no", "yes"))
+AUC_glm1_not_val_set9$auc
+```
+
+```{r glm1 not val 8}
+data_not_val_set8 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold9, bank_fold10)
+glm1_not_val_set8 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set8)
+
+glm1_not_val_set8_predictions  <- predict(glm1_not_val_set8, data_not_val_set8, type="response")
+
+AUC_glm1_not_val_set8 <- roc(data_not_val_set8$y, glm1_not_val_set8_predictions, levels=c("no", "yes"))
+AUC_glm1_not_val_set8$auc
+```
+
+```{r glm1 not val 7}
+data_not_val_set7 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold8, bank_fold9, bank_fold10)
+glm1_not_val_set7 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set7)
+
+glm1_not_val_set7_predictions  <- predict(glm1_not_val_set7, data_not_val_set7, type="response")
+
+AUC_glm1_not_val_set7 <- roc(data_not_val_set7$y, glm1_not_val_set7_predictions, levels=c("no", "yes"))
+AUC_glm1_not_val_set7$auc
+```
+
+```{r glm1 not val 6}
+data_not_val_set6 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
+glm1_not_val_set6 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set6)
+
+glm1_not_val_set6_predictions  <- predict(glm1_not_val_set6, data_not_val_set6, type="response")
+
+AUC_glm1_not_val_set6 <- roc(data_not_val_set6$y, glm1_not_val_set6_predictions, levels=c("no", "yes"))
+AUC_glm1_not_val_set6$auc
+```
+
+```{r glm1 not val 5}
+data_not_val_set5 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold6, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
+glm1_not_val_set5 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set5)
+
+glm1_not_val_set5_predictions  <- predict(glm1_not_val_set5, data_not_val_set5, type="response")
+
+AUC_glm1_not_val_set5 <- roc(data_not_val_set5$y, glm1_not_val_set5_predictions, levels=c("no", "yes"))
+AUC_glm1_not_val_set5$auc
+```
+
+```{r glm1 not val 4}
+data_not_val_set4 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
+glm1_not_val_set4 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set4)
+
+glm1_not_val_set4_predictions  <- predict(glm1_not_val_set4, data_not_val_set4, type="response")
+
+AUC_glm1_not_val_set4 <- roc(data_not_val_set4$y, glm1_not_val_set4_predictions, levels=c("no", "yes"))
+AUC_glm1_not_val_set4$auc
+```
+
+```{r glm1 not val 3}
+data_not_val_set3 <- rbind(bank_fold1, bank_fold2, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
+glm1_not_val_set3 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set3)
+
+glm1_not_val_set3_predictions  <- predict(glm1_not_val_set3, data_not_val_set3, type="response")
+
+AUC_glm1_not_val_set3 <- roc(data_not_val_set3$y, glm1_not_val_set3_predictions, levels=c("no", "yes"))
+AUC_glm1_not_val_set3$auc
+```
+
+```{r glm1 not val 2}
+data_not_val_set2 <- rbind(bank_fold1, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
+glm1_not_val_set2 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set2)
+
+glm1_not_val_set2_predictions  <- predict(glm1_not_val_set2, data_not_val_set2, type="response")
+
+AUC_glm1_not_val_set2 <- roc(data_not_val_set2$y, glm1_not_val_set2_predictions, levels=c("no", "yes"))
+AUC_glm1_not_val_set2$auc
+```
+
+```{r glm1 not val 1}
+data_not_val_set1 <- rbind(bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
+glm1_not_val_set1 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set1)
+
+glm1_not_val_set1_predictions  <- predict(glm1_not_val_set1, data_not_val_set1, type="response")
+
+AUC_glm1_not_val_set1 <- roc(data_not_val_set1$y, glm1_not_val_set1_predictions, levels=c("no", "yes"))
+AUC_glm1_not_val_set1$auc
+```
+
+```{r AUC glm1 k fold}
+AUC_glm1_kfold_vector <- c(AUC_glm1_not_val_set1$auc, AUC_glm1_not_val_set2$auc, AUC_glm1_not_val_set3$auc, AUC_glm1_not_val_set4$auc, AUC_glm1_not_val_set5$auc, AUC_glm1_not_val_set6$auc, AUC_glm1_not_val_set7$auc, AUC_glm1_not_val_set8$auc, AUC_glm1_not_val_set9$auc, AUC_glm1_not_val_set10$auc)
+
+AUC_glm1_kfold_overall <- mean(AUC_glm1_kfold_vector)
+AUC_glm1_kfold_overall
+```
+
+
+Ora riprocesso il modello su tutto il training e poi calcolo la AUC sul test
+
+```{r glm1 test}
+glm1_training <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = training_set)
+
+summary(glm1_training)
+
+#glm1_test_predictions  <- predict(glm1_training, newdata = test_set, type="response")
+#AUC_glm1_test <- roc(test_set$y, glm1_test_predictions, levels=c("no", "yes"))
+#AUC_glm1_test
+#plot.roc(AUC_glm1_test, legacy.axes = TRUE)
+```
+
+* Manca un test di HL almeno e la multicollinearità. vedi tesi*
+* inoltre solo il modello vincente andrebbe processato sul dataset di test*
+* inoltre devo decidere se rimuovere qualche effetto di interazione, no? ma quando va fatto, durante la k-fold validation o dopo? studia bene questo: http://www.r-bloggers.com/variable-selection-using-cross-validation-and-other-techniques*

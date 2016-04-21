@@ -1,0 +1,37 @@
+---
+title: "Models"
+author: "Americo"
+date: "21 aprile 2016"
+output: html_document
+---
+
+
+```{r partizione training e test}
+set.seed(19121984)
+
+training_set <- bank0 %>%
+        add_rownames() %>%
+        sample_frac(0.8, replace = FALSE)
+
+test_set <- bank0 %>%
+        add_rownames() %>%
+        sample_frac(1, replace = FALSE) %>%
+        anti_join(training_set, by = "rowname")
+#check ok, sono diversi
+```
+
+```{r k fold in training}
+flds <- createFolds(training_set$y, k = 10, list = TRUE, returnTrain = FALSE)
+bank_fold1 <- training_set[flds[[1]], ]
+bank_fold2 <- training_set[flds[[2]], ]
+bank_fold3 <- training_set[flds[[3]], ]
+bank_fold4 <- training_set[flds[[4]], ]
+bank_fold5 <- training_set[flds[[5]], ]
+bank_fold6 <- training_set[flds[[6]], ]
+bank_fold7 <- training_set[flds[[7]], ]
+bank_fold8 <- training_set[flds[[8]], ]
+bank_fold9 <- training_set[flds[[9]], ]
+bank_fold10 <- training_set[flds[[10]], ]
+```
+
+

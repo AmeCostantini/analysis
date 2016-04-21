@@ -8,6 +8,10 @@ require(ggplot2)
 require(dplyr)
 require(GGally)
 require(tidyr)
+require(caret)
+require(DAAG)
+library(pROC)
+library(ROCR)
 ```
 
 #Set up cartelle e creazione dataset

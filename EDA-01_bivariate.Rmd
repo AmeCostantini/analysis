@@ -265,30 +265,50 @@ Graficamente l'interaction effect è evidente e logicamente ha senso.
 
 ```{r month duration_class table }
 t_month_y
-t_day_y
 g_duration_class_y
+g_month
+g_month_y
+
+t_month_duration_class <- bank0 %>%
+        group_by(month, duration_class) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(n_rel = n / sum(n)) %>%
+        select(duration_class, month, n_rel) %>%
+        spread(duration_class, n_rel, fill = 0) %>%
+        left_join(t_month_y, by = "month") %>%
+        select(-n, -n_rel, -n_rel_ind) %>%
+        arrange(desc(perc_y))
 ```
 
 I mesi di maggior conversion hanno pochissimi volumi. Posto che volumi così bassi non sono significativi, è curioso che la conversion sia sempre altissima e non è mai, che so, bassissima. Noi non sappiamo il numero di chiamate svolte ogni mese dal call center, perché questa variabile conteggia l'ultima chiamata al cliente, che io immagino (per coerenza su come viene definita duration) sia quella di conversion o abbandono.
 
-*devo cambiare il binning di duration e vedere che rapporto c'è col mese. poi la variable selection è finita e studio il primo modello*.
+Si nota tuttavia che nei mesi di maggior conversion / volumi bassi non c'è una particolare concentrazione di chiamate lunghe, come a dire: minori chiamate, maggiore qualità / lunghezza => conversion. Mi rimane solo l'ausilio grafico per smentire l'associazione tra bassi volumi di ultime chiamate e conversion causa qualità.
 
+```{r month duration_class graph}
+g_month_duration_class_y <- ggplot(bank0, aes(x = month, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~duration_class) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_month_duration_class_y
 ```
 
-t_month_day <- bank0 %>%
-        group_by(month, day) %>%
-        summarise(n = n(), y_rate = mean(y == "yes")) %>%
-        mutate(n_rel = n / sum(n)) %>%
-        select(month, day, n_rel) %>%
-        spread(day, n_rel)
-#completamente inutile
-t_month_day_y <- bank0 %>%
-        group_by(month, day) %>%
-        summarise(n = n(), y_rate = mean(y == "yes")) %>%
-        mutate(n_rel = n / sum(n)) %>%
-        select(month, day, y_rate) %>%
-        spread(day, y_rate)
-        
+Mi sembra che a parità di durata delle chiamate l'effetto è che: se la chiamata è breve non si converte in nessun mese (main effect puro), poi il trend tra i mesi è simile per i vari livelli di duration, sempre tenendo conto del main effect.Tendo quindi a pensare che ci sia davvero una stagionalità, e forse il numero basso di chiamate nei mesi in cui la conversion è alta è dovuto al raggiungimento anticipato dei contratti da sottoscrivere. Posso confermare questa ultima tesi facendo un conteggio dei contratti per mese
+
+```{r month table 2}
+t_month_y2 <- bank0 %>%
+        group_by (month) %>%
+        summarise(y_sum = sum(y == "yes"), y_rate = mean(y == "yes")) %>%
+        arrange(desc(y_rate))
 ```
 
-Month è la variabile che esprime il mese di 
+No, la mia ipotesi era errata.
+L'ultima cosa che vedo è la distribuzione di duration per mese. Non mi aspetto che sia sbilanciata.
+
+```{r month duration_class graph 2}
+g_month_duration_class <- ggplot(bank0, aes(x = month, fill = duration_class)) + 
+        geom_bar(position = "fill") 
+g_month_duration_class
+```
+
+Non è sbilanciata, marzo è uguale a maggio. Non c'è stata una maggiore dedizione alla telefonata nei mesi di bassi volumi. Io la variabile month la inserisco con riserva, deve esserci della stagionalità.

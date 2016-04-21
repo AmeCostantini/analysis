@@ -141,16 +141,16 @@ Se è la penultima chiamata, si può immaginare che o un cliente di suo interess
 
 
 ```{r duration class table}
+summary(bank0$duration)
+duration_quantile <- quantile(bank0$duration[bank0$duration != 0], probs = seq(0.1,1,0.1))
+bank0$duration_class <- cut(bank0$duration, breaks = c(-1, 0, duration_quantile), right = TRUE, labels = c("no call", "(0,58]",  "(58,89]", "(89,117]", "(117,147]"," (147,180]", "(180,223]", "(223,280]", "(280,368]", "(368,548]", "(548,4918]"))
+
 t_duration_class_y <- bank0 %>%
-        mutate(duration_class = ntile(duration, 10)) %>%
         group_by (duration_class) %>%
         summarise(n(), mean(y == "yes"))
 ```
 
 ```{r duration class graph}
-bank0  <- bank0 %>%
-        mutate(duration_class = ntile(duration, 10))
-
 g_duration_class_y <- ggplot(bank0, aes(x = factor(duration_class), fill = y)) +
         geom_bar(position = "fill") +
         geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
@@ -160,7 +160,9 @@ g_duration_class_y
 Esatto. al crescere della durata della chiamata cresce la quota di coloro che sottoscrivono, o viceversa.
 
 ```{r duration IV} 
+#devo togliere i tre valori nulli di duration altrimenti la formula va in errore
 duration_class_woe <- bank0 %>%
+        filter(duration_class != "no call") %>%
         select(duration_class, y) %>%
         group_by(duration_class) %>%
         summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
