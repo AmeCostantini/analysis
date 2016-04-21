@@ -20,6 +20,7 @@
 * scegliere che modelli testare (uno judgement based, uno stepwise, uno judgement senza interazioni, direi)
 * far girare i modelli e togliere variabili correlate
 * imparare a calcolare AUROC dei modelli
+* testare i modelli con la statistica HL
 * selezionare il modello vincente, con AUROC maggiore
 * applicare il modello a training completo
 * testare definitivamente il modello
