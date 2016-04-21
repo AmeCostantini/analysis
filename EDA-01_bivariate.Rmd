@@ -172,5 +172,123 @@ Non abbiamo trovato confounding, ma una relazione di interazione, che ci fa dire
 
 ##Education and job
 
+Convertono di più i laureti. Magari non è questione di job che fai ma di educazione che hai.
+
+```{r education and job graph}
+g_education
+g_job
+g_job_y
+g_education_y
+g_education_job <- ggplot(bank0, aes(x = job, fill = education)) + 
+        geom_bar(position = "fill") 
+g_education_job
+
+g_education_job_y <- ggplot(bank0, aes(x = job, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~education) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_education_job_y
+```
+
+Vedo una interazione solo nel management, che essendo pieno di laureati marginalmente coverte di più, ma se non laureato non converte. Bisogna capire i volumi, potrebbero essere bassi. Per il resto vedo comportamenti simili alla analisi cruda, con un main effect dell'education. Tuttavia anche imprenditori e liberi professionisti hanno una buona quota di laureati, e tuttavia non convertono marginalmente e gli imprenditori nemmeno solo se laureati. Il lavoro vince sulla job, diciamo, nel senso che non gli fa esercitare nemmeno il main effect (e non so se questa è una interazione, probabilmente sì).
+
+```{r education and job table}
+t_education_job <- bank0 %>%
+        group_by(job, education) %>%
+        summarise(n = n(), y_rate = mean(y == "yes"))
+t_education_job
+
+t_education_job_y <- bank0 %>%
+        group_by(job, education) %>%
+        summarise(y_rate = mean(y == "yes")) %>%
+        select(job, education, y_rate) %>%
+        spread(job, y_rate)
+t_education_job_y
+```
+
+Non vedo grande aiuto dell'education a interpretare la relazione tra job e conversion, non includerei un effetto di interazione.
+
 ##Housing and loan
 
+```{r loan and housing graph}
+g_loan
+g_housing
+g_loan_y
+g_housing_y
+g_loan_housing <- ggplot(bank0, aes(x = loan, fill = housing)) + 
+        geom_bar(position = "fill") 
+g_loan_housing
+
+g_loan_housing_y <- ggplot(bank0, aes(x = loan, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~housing) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_loan_housing_y
+```
+
+Vedo solo un main effect. Se hai il mutuo converti meno; dato che hai un prestito, se hai anche il mutuo converti meno se no converti di più. Magari il noxno accentua la conversion più del semplice main effect, ma non so se vale la pena testare una interazione per questo.
+
+
+```{r loan and housing table}
+t_loan <- bank0 %>%
+        group_by(loan) %>%
+        summarise(n = n(), y_rate = mean(y == "yes"))
+t_loan
+
+t_housing <- bank0 %>%
+        group_by(housing) %>%
+        summarise(n = n(), y_rate = mean(y == "yes"))
+t_housing
+
+t_loan_housing <- bank0 %>%
+        group_by(loan, housing) %>%
+        summarise(n = n(), y_rate = mean(y == "yes"))
+t_loan_housing
+
+t_loan_housing_y <- bank0 %>%
+        group_by(loan, housing) %>%
+        summarise(y_rate = mean(y == "yes")) %>%
+        select(loan, housing, y_rate) %>%
+        spread(loan, y_rate)
+t_loan_housing_y
+
+ggplot(t_loan_housing, aes(x = loan, y = y_rate, col = housing, group = housing)) + 
+        geom_point (size = 4) + 
+        geom_line(col= "black", linetype = 2)
+```
+
+Graficamente l'interaction effect è evidente e logicamente ha senso.
+
+##Month and day
+
+```{r month duration_class table }
+t_month_y
+t_day_y
+g_duration_class_y
+```
+
+I mesi di maggior conversion hanno pochissimi volumi. Posto che volumi così bassi non sono significativi, è curioso che la conversion sia sempre altissima e non è mai, che so, bassissima. Noi non sappiamo il numero di chiamate svolte ogni mese dal call center, perché questa variabile conteggia l'ultima chiamata al cliente, che io immagino (per coerenza su come viene definita duration) sia quella di conversion o abbandono.
+
+*devo cambiare il binning di duration e vedere che rapporto c'è col mese. poi la variable selection è finita e studio il primo modello*.
+
+```
+
+t_month_day <- bank0 %>%
+        group_by(month, day) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(n_rel = n / sum(n)) %>%
+        select(month, day, n_rel) %>%
+        spread(day, n_rel)
+#completamente inutile
+t_month_day_y <- bank0 %>%
+        group_by(month, day) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(n_rel = n / sum(n)) %>%
+        select(month, day, y_rate) %>%
+        spread(day, y_rate)
+        
+```
+
+Month è la variabile che esprime il mese di 
