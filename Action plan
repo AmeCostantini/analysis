@@ -10,11 +10,18 @@
 
 ##Analisi bivariata
 
-* rileggere i link utili e il paragrafo che ho copiato da internet e rivedere le analisi / commenti fatti alla luce delle nuove nozioni di analisi stratificata, specificazione, interazione
-* terminare le analisi trivariate come da issues (anche se in realtà forse confounding non c'è mai
+* rileggere i link utili e il paragrafo che ho copiato da internet e rivedere le analisi / commenti fatti alla luce delle nuove nozioni di analisi stratificata, specificazione, interazione *V*
+* terminare le analisi trivariate come da issues (anche se in realtà forse confounding non c'è mai *V*
 
 ##Model selection
 
-* esprimere una prima variable selection basata sulo sul judgement e sull'analisi esplorativa
+* creare partizione tra training e test
+* creare le k-fold nel dataset training
+* scegliere che modelli testare (uno judgement based, uno stepwise, uno judgement senza interazioni, direi)
+* far girare i modelli e togliere variabili correlate
+* imparare a calcolare AUROC dei modelli
+* selezionare il modello vincente, con AUROC maggiore
+* applicare il modello a training completo
+* testare definitivamente il modello
 
-#Modello
+
