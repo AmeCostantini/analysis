@@ -1,0 +1,25 @@
+---
+title: "Untitled"
+author: "Americo"
+date: "22 aprile 2016"
+output: html_document
+---
+
+Prima stepwise selection su tutto il training
+
+```{r}
+?stepAIC
+stepAIC()
+
+glm2_beforebackstep_training <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + previous, family = "binomial", data = training_set)
+
+glm2_backstep_selection <- stepAIC(object = glm2_beforestep_training, direction = "backward", scope = c(upper = ~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous, lower = ~1))
+
+glm2_beforeforwardstep_training <- glm(y~1, family = "binomial", data = training_set)
+
+glm2_forwardstep_selection <- stepAIC(object = glm2_beforeforwardstep_training, direction = "forward", scope = c(upper = ~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous, lower = ~1))
+
+```
+
+Mi sembra che utilizzando una backward step toglie solo default e ha un AIC di 22000 circa.
+con la forward che li aggiunge uno a uno il miglio AIC è 22600 per un modello con y ~ month + contact + housing + campaign + job + previous + loan + marital + education + pdays + balance + age + day
