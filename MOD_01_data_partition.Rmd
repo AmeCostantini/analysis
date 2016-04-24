@@ -21,6 +21,7 @@ test_set <- bank0 %>%
 ```
 
 ```{r k fold in training}
+set.seed(123)
 flds <- createFolds(training_set$y, k = 10, list = TRUE, returnTrain = FALSE)
 bank_fold1 <- training_set[flds[[1]], ]
 bank_fold2 <- training_set[flds[[2]], ]
@@ -35,3 +36,33 @@ bank_fold10 <- training_set[flds[[10]], ]
 ```
 
 
+#Validation set apprach
+
+Creo training_vsa, validation_vsa, test_vsa. Con questa partizione posso attuare il validation approach e modellare e diagnosticare si training, selezionare su validation e testare su test.
+
+
+```{r partizione training validation e test}
+set.seed(456)
+training_set_vsa <- bank0 %>%
+        add_rownames() %>%
+        sample_frac(0.6, replace = FALSE)
+nrow(training_set_vsa)
+
+test_and_val_set1 <- bank0 %>%
+        add_rownames() %>%
+        sample_frac(1, replace = FALSE) %>%
+        anti_join(training_set_vsa, by = "rowname")
+nrow(test_and_val_set1)
+#check ok, sono diversi
+
+test_set_vsa <- test_and_val_set1 %>%
+        sample_frac(0.5, replace = FALSE)
+nrow(test_set_vsa)
+
+validation_set_vsa <- test_and_val_set1 %>%
+        sample_frac(1, replace = FALSE) %>%
+        anti_join(test_set_vsa, by = "rowname")
+nrow(validation_set_vsa)
+
+validation_set_vsa[validation_set_vsa$rowname == test_set_vsa$rowname,] #check ok, tutte righe diverse
+```
