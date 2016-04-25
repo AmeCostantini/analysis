@@ -21,8 +21,22 @@
 * far girare i modelli e togliere variabili correlate
 * imparare a calcolare AUROC dei modelli
 * testare i modelli con la statistica HL
+* test di mispecification del modello?
 * selezionare il modello vincente, con AUROC maggiore
 * applicare il modello a training completo
 * testare definitivamente il modello
 
+
+#Commento stato dell'arte
+
+Ho iniziato a sperimentare più modelli. Per ora uno con selezione variabili sopra 0.02, 
+salvo interazioni. Uno simile ma con le quantitative binnate(chiuso issue su ntile, correttamente aperto), che ha poi portato a togliere una variabile (previous) 
+per multicollinearità, e uno da procedura step.
+
+HL mai significativa.
+
+Ora manca un modello fatto coi p.value (sinora mai usati per escludere variabili, problema di bonferroni, problema di 
+interazione e dummy variable che rendono complicato escludere variabili.
+
+Ancora
 
