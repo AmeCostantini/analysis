@@ -21,16 +21,21 @@ g_campaign_y
 Non mi sembra discrimini molto il numero di contatti precedenti.
 
 ```{r campaign class table}
+bank0$campaign <- as.numeric(bank0$campaign)
+
+campaign_quantile <- quantile(bank0$campaign, probs = seq(0.1,1,0.1)) #considerando i quantili il binning lo faccio a mano
+
+bank0$campaign_class <- cut(bank0$campaign, breaks = c(0, 1, 2, 3, 4, 5, max(bank0$campaign)+1), right = TRUE, labels = c("1", "2", "3", "4", "5", "up 5"))
+summary(bank0$campaign_class)
+bank_campaign_na <- bank0[is.na(bank0$campaign_class),] 
+nrow(bank_campaign_na) #ok
+
 t_campaign_class_y <- bank0 %>%
-        mutate(campaign_class = ntile(campaign, 10)) %>%
         group_by (campaign_class) %>%
         summarise(n(), media = mean(y == "yes"))
 ```
 
 ```{r campaign class graph}
-bank0  <- bank0 %>%
-        mutate(campaign_class = ntile(campaign, 10))
-
 g_campaign_class_y <- ggplot(bank0, aes(x = factor(campaign_class), fill = y)) +
         geom_bar(position = "fill") +
         geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
@@ -49,9 +54,25 @@ campaign_class_woe <- bank0 %>%
         select (starts_with("perc"))
 campaign_class_woe$woe <- log(campaign_class_woe$perc_no / campaign_class_woe$perc_y)
 campaign_class_IV <- sum((campaign_class_woe$perc_no - campaign_class_woe$perc_y) * campaign_class_woe$woe)
+
+
+############################################
+bank0 <- bank0 %>%
+        mutate(c_class = ntile(campaign, 10))
+
+c_class_woe <- bank0 %>%
+        select(c_class, y) %>%
+        group_by(c_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+c_class_woe$woe <- log(c_class_woe$perc_no / c_class_woe$perc_y)
+c_class_IV <- sum((c_class_woe$perc_no - c_class_woe$perc_y) * c_class_woe$woe)
+c_class_IV
+table(bank0$campaign, bank0$c_class)
 ```
 
-0.58, abbastanza predittiva.
+Wow, che scoperta. Se raggruppo campaign in classi definite da me in base ai quantili, l'information value è 0.08, abbastanza basso. Se uso ntile è 0.58, suspicious. E infatti è sospetto: ntile raggruppa in 10 gruppi di pari dimensioni, ma questo per distribuzioni molto strette comporta che in due gruppi diversi (livelli diversi, valori diversi) ci sia la stessa informazione. Se si vede la cross table, i gruppi 1 2 e 3 sono identici, ma portano (casualmente!) dei woe molto diversi!
 
 ##pdays
 

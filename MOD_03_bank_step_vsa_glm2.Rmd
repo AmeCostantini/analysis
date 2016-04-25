@@ -1,0 +1,69 @@
+---
+title: "Untitled"
+author: "Americo"
+date: "22 aprile 2016"
+output: html_document
+---
+
+Prima stepwise selection su tutto il training
+
+```{r backward e forward}
+glm2_beforebackstep_training <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + previous, family = "binomial", data = training_set_vsa)
+
+glm2_backstep_selection <- stepAIC(object = glm2_beforebackstep_training, direction = "backward", scope = c(upper = ~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous, lower = ~1))
+
+glm2_backstep_selection$anova
+
+glm2_beforeforwardstep_training <- glm(y~1, family = "binomial", data = training_set_vsa)
+
+glm2_forwardstep_selection <- stepAIC(object = glm2_beforeforwardstep_training, direction = "forward", scope = c(upper = ~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous, lower = ~1))
+
+glm2_forwardstep_selection$anova
+```
+
+Allora, la backward come final model presenta y ~ age + job + marital + education + balance + housing + loan + 
+    contact + pdays + month + campaign + previous e un AIC di 17048.57.
+    
+La forward  y ~ month + contact + housing + campaign + loan + job + previous + 
+    education + marital + pdays + balance + age con AIC di 17048.57. Identico!
+
+
+#Diagnostica
+
+```{r glm2 formula }
+step_formula <- y ~ age + job + marital + education + balance + housing + loan + contact + pdays + month + campaign + previous
+
+glm2_vsa <- glm(step_formula, family ="binomial", data = training_set_vsa)
+
+```
+
+##Multicollinearità
+
+```{r coll}
+cd <- colldiag(model.matrix(glm2_vsa))
+print(cd)
+```
+
+Nessun indice, eccetto intercetta, supera 30. Non ci sono problemi di multicollinearità.
+
+##Bontà adattamento modello
+
+```{r HL glm2}
+hl_glm2 <- hoslem.test(training_set_vsa$y =="yes", fitted(glm2_vsa), g=100)
+hl_glm2
+```
+
+Anche qua test rigettato, l'ipotesi nulla di buon adattamento va rigettata. Anche con 100 gruppi il p.value è bassissimo.
+
+#Stima performance predittive
+
+Bene, ora vediamo l'AUC sul validation set
+
+```{r glm2 AUC on validation }
+glm2_vsa_predictions  <- predict(glm2_vsa, validation_set_vsa, type="response")
+
+AUC_glm2_vsa <- roc(validation_set_vsa$y, glm2_vsa_predictions, levels=c("no", "yes"))
+AUC_glm2_vsa$auc
+```
+
+Però. glm2 ha AUC di 0.7463 contro 0.746 di glm1. Per ora vince la step contro di me.

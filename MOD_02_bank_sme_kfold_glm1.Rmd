@@ -5,12 +5,15 @@ date: "21 aprile 2016"
 output: html_document
 ---
 
-studia http://www.inside-r.org/node/91537
-
+La selezione delle variabili tramite information value porta a escludere tutte quelle con IV sotto 0.1 (http://support.sas.com/resources/papers/proceedings13/095-2013.pdf). Dovrei quindi togliere default, marital, education, loan. ma volendo testare l'interazione tra loan e housing, age e marital, posso togliere solo default e education. Inoltre dovrei includere le variabili quantitative come classi, ma quello lo farò dopo.
+.
+```{r formula glm1}
+formula_glm1 <- y~age + job + marital + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing
+```
 
 ```{r glm1 not val 10}
 data_not_val_set10 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold9)
-glm1_not_val_set10 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set10)
+glm1_not_val_set10 <- glm(formula_glm1, family = "binomial", data = data_not_val_set10)
 
 summary(glm1_not_val_set10)
 
@@ -22,7 +25,7 @@ AUC_glm1_not_val_set10$auc
 
 ```{r glm1 not val 9}
 data_not_val_set9 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold10)
-glm1_not_val_set9 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set9)
+glm1_not_val_set9 <- glm(formula_glm1, family = "binomial", data = data_not_val_set9)
 
 glm1_not_val_set9_predictions  <- predict(glm1_not_val_set9, bank_fold9, type="response")
 
@@ -32,7 +35,7 @@ AUC_glm1_not_val_set9$auc
 
 ```{r glm1 not val 8}
 data_not_val_set8 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold9, bank_fold10)
-glm1_not_val_set8 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set8)
+glm1_not_val_set8 <- glm(formula_glm1, family = "binomial", data = data_not_val_set8)
 
 glm1_not_val_set8_predictions  <- predict(glm1_not_val_set8, bank_fold8, type="response")
 
@@ -42,7 +45,7 @@ AUC_glm1_not_val_set8$auc
 
 ```{r glm1 not val 7}
 data_not_val_set7 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold8, bank_fold9, bank_fold10)
-glm1_not_val_set7 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set7)
+glm1_not_val_set7 <- glm(formula_glm1, family = "binomial", data = data_not_val_set7)
 
 glm1_not_val_set7_predictions  <- predict(glm1_not_val_set7, bank_fold7, type="response")
 
@@ -52,7 +55,7 @@ AUC_glm1_not_val_set7$auc
 
 ```{r glm1 not val 6}
 data_not_val_set6 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
-glm1_not_val_set6 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set6)
+glm1_not_val_set6 <- glm(formula_glm1, family = "binomial", data = data_not_val_set6)
 
 glm1_not_val_set6_predictions  <- predict(glm1_not_val_set6, bank_fold6, type="response")
 
@@ -62,7 +65,7 @@ AUC_glm1_not_val_set6$auc
 
 ```{r glm1 not val 5}
 data_not_val_set5 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold4, bank_fold6, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
-glm1_not_val_set5 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set5)
+glm1_not_val_set5 <- glm(formula_glm1, family = "binomial", data = data_not_val_set5)
 
 glm1_not_val_set5_predictions  <- predict(glm1_not_val_set5, bank_fold5, type="response")
 
@@ -72,7 +75,7 @@ AUC_glm1_not_val_set5$auc
 
 ```{r glm1 not val 4}
 data_not_val_set4 <- rbind(bank_fold1, bank_fold2, bank_fold3, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
-glm1_not_val_set4 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set4)
+glm1_not_val_set4 <- glm(formula_glm1, family = "binomial", data = data_not_val_set4)
 
 glm1_not_val_set4_predictions  <- predict(glm1_not_val_set4, bank_fold4, type="response")
 
@@ -82,7 +85,7 @@ AUC_glm1_not_val_set4$auc
 
 ```{r glm1 not val 3}
 data_not_val_set3 <- rbind(bank_fold1, bank_fold2, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
-glm1_not_val_set3 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set3)
+glm1_not_val_set3 <- glm(formula_glm1, family = "binomial", data = data_not_val_set3)
 
 glm1_not_val_set3_predictions  <- predict(glm1_not_val_set3, bank_fold3, type="response")
 
@@ -92,7 +95,7 @@ AUC_glm1_not_val_set3$auc
 
 ```{r glm1 not val 2}
 data_not_val_set2 <- rbind(bank_fold1, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
-glm1_not_val_set2 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set2)
+glm1_not_val_set2 <- glm(formula_glm1, family = "binomial", data = data_not_val_set2)
 
 glm1_not_val_set2_predictions  <- predict(glm1_not_val_set2, bank_fold2, type="response")
 
@@ -102,7 +105,7 @@ AUC_glm1_not_val_set2$auc
 
 ```{r glm1 not val 1}
 data_not_val_set1 <- rbind(bank_fold2, bank_fold3, bank_fold4, bank_fold5, bank_fold6, bank_fold7, bank_fold8, bank_fold9, bank_fold10)
-glm1_not_val_set1 <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = data_not_val_set1)
+glm1_not_val_set1 <- glm(formula_glm1, family = "binomial", data = data_not_val_set1)
 
 glm1_not_val_set1_predictions  <- predict(glm1_not_val_set1, bank_fold1, type="response")
 
@@ -129,7 +132,7 @@ AIC_glm1_kfold_overall
 Ora riprocesso il modello su tutto il training e poi calcolo la AUC sul test
 
 ```{r glm1 test}
-glm1_training <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing, family = "binomial", data = training_set)
+glm1_training <- glm(formula_glm1, family = "binomial", data = training_set)
 
 summary(glm1_training)
 

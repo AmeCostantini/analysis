@@ -232,9 +232,16 @@ g_balance_y_p95
 Ora comincia a essere evidente che chi sottoscrive depositi tende a avere saldo sul conto più alto; vale per la mediana del gruppo sì, ma anche per il terzo quartile. Quindi per saldi che crescono si tende a sottoscrivere più depositi, il che ha senso. più soldi hai, più ne puoi depositare.
 
 ```{r balance class table}
+bank0$balance <- as.numeric(bank0$balance)
+
+balance_quantile <- quantile(bank0$balance, probs = seq(0.1,1,0.1))
+
+bank0$balance_class <- cut(bank0$balance, breaks = c(min(bank0$balance)-1, -1, balance_quantile), right = TRUE, labels = c("negative", "0", "(0, 22]", "(22,131]", "(131,272]", "(272,448]", "(448,701]", "(701,1126]", "(1126,1859]", "(1859,3574]", "(3574,102127]"))
+summary(bank0$balance_class)
+bank_balance_na <- bank0[is.na(bank0$balance_class),] #ok
+
+
 t_balance_class_y <- bank0 %>%
-        filter(balance <= balance_p_95) %>%
-        mutate(balance_class = ntile(balance, 10)) %>%
         group_by (balance_class) %>%
         summarise(n(), mean(y == "yes"))
 ```
@@ -242,10 +249,6 @@ t_balance_class_y <- bank0 %>%
 Esatto. al crescere del saldo cresce la quota di coloro che sottoscrivono.
 
 ```{r balance IV}
-
-bank0  <- bank0 %>%
-        mutate(balance_class = ntile(balance, 10))
-        
 balance_class_woe <- bank0 %>%
         select(balance_class, y) %>%
         group_by(balance_class) %>%

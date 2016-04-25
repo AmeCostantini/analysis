@@ -1,18 +1,21 @@
 #Caricamento package
 
 ```{r packages, message=FALSE}
-library(devtools)
-require(riv)
-library(woe)
-require(ggplot2)
-require(dplyr)
-require(GGally)
-require(tidyr)
+require(ResourceSelection)
+require(MKmisc)
+require(perturb)
 require(caret)
 require(DAAG)
 library(pROC)
 library(ROCR)
 require(MASS)
+library(devtools)
+require(GGally)
+library(woe)
+require(ggplot2)
+require(dplyr)
+require(tidyr)
+select <- dplyr::select
 ```
 
 #Set up cartelle e creazione dataset

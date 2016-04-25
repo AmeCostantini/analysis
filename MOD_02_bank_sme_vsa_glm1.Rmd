@@ -1,0 +1,63 @@
+---
+title: "Untitled"
+author: "Americo"
+date: "25 aprile 2016"
+output: html_document
+---
+
+Abbiamo quindi training_set_vsa, validation_set_vsa, test_set_vsa.
+
+Da ora userò l'approccio vsa, perché mi permette di modellare molto meglio il modello testando la significatività, escludendo variabili per p.value, diagnosticando multicollinearità e bontà di adattamento.
+
+I paragoni andranno fatti tra i modelli con questo approccio.
+
+Il modello poco propenso all'overfitting e la quantità di osservazioni che non dovrebbe generare bias mi fanno preferire vsa.
+
+#Modello
+
+Selezione solo le variabili con un IV superiore a 0.02, salvo interazioni incluse (http://support.sas.com/resources/papers/proceedings13/095-2013.pdf). Ho comunque sperimentato che escludendo un predittore debole (campaign) l'AUC del validation set passava da 0.746 a 0.740.
+
+
+```{r formula glm1 vsa}
+formula_glm1 <- formula_glm1 <- y~age + job + marital + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing
+```
+
+```{r glm1 vsa building}
+glm1_vsa <- glm(formula_glm1, family = "binomial", data = training_set_vsa)
+
+summary(glm1_vsa) #AIC molto basso, è normale la sovrastima delle performance, che non vuol dire overfitting.
+```
+
+#Diagnostica
+
+##Multicollinearità
+
+```{r coll}
+cd <- colldiag(model.matrix(glm1_vsa))
+print(cd)
+```
+
+Ci sono due indici (il 48 e il 49) maggiori di 30, ma nessuna vdp maggiore di 0.5 (anche se un paio ci vanno vicino, e qualche problema di multicollinearità non mi stupisce).
+
+##Bontà adattamento modello
+
+```{r HL glm1}
+hl_glm1 <- hoslem.test(training_set_vsa$y =="yes", fitted(glm1_vsa), g=10)
+hl_glm1
+```
+
+Il test, se rigettato, rigetta l'ipotesi di buon adattamento. Qui non si può rigettare. è vero che c'è il problema che il numero di gruppi non dovrebbe essere inferiore a p+1 (http://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/), e io con le variabili dummy ho molte p. Ma anche se i gruppi sono 100, il p.value è significativo, quindi il buon adattamento va rigettato.
+
+#Stima performance predittive
+
+```{r glm1 AUC on validation}
+glm1_vsa_predictions  <- predict(glm1_vsa, validation_set_vsa, type="response")
+
+AUC_glm1_vsa <- roc(validation_set_vsa$y, glm1_vsa_predictions, levels=c("no", "yes"))
+AUC_glm1_vsa$auc
+```
+
+AUC del modello sul validation set è 0.746. Con quella competerà con gli altri modelli, se la diagnostica non me lo fa cambiare.
+
+
+
