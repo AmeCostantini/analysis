@@ -36,7 +36,7 @@ per multicollinearità, e uno da procedura step.
 HL mai significativa.
 
 Ora manca un modello fatto coi p.value (sinora mai usati per escludere variabili, problema di bonferroni, problema di 
-interazione e dummy variable che rendono complicato escludere variabili.
+interazione e dummy variable che rendono complicato escludere variabili, anche se forse qualcosa (specie da glm3) si può togliere.
 
 Ancora
 
