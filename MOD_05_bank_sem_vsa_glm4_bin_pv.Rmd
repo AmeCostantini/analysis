@@ -1,0 +1,79 @@
+---
+title: "Untitled"
+author: "Americo"
+date: "26 aprile 2016"
+output: html_document
+---
+
+Modello simile a glm3, ma uso i p.value per escludere variabili se possibile
+
+```{r formula glm4 vsa}
+formula_glm4_1 <- y ~ age_class + job + marital + balance_class + housing + loan + contact + day + month + campaign_class + pdays_class + age_class*marital + age_class*job + loan*housing
+```
+
+```{r glm4 vsa building}
+glm4_1_vsa <- glm(formula_glm4_1, family = "binomial", data = training_set_vsa)
+
+summary(glm4_1_vsa) #AIC molto basso, è normale la sovrastima delle performance, che non vuol dire overfitting.
+```
+
+Tolgo interazion age*marital age*job e job: Raiggiungo previous_class, magari ora non ci sarà collinearità.
+
+```{r formula glm4 2 vsa}
+formula_glm4_2 <- y ~ age_class + marital + balance_class + housing + loan + contact + day + month + campaign_class + pdays_class + loan*housing
+```
+
+```{r glm4 second building}
+glm4_2_vsa <- glm(formula_glm4_2, family = "binomial", data = training_set_vsa)
+summary(glm4_2_vsa)
+anova(glm4_1_vsa, glm4_2_vsa)
+```
+
+
+#Multicollinearità
+
+```{r glm 4 coll}
+matrix_glm4_2 <- model.matrix(glm4_2_vsa)
+matrix_glm4_2 <- matrix_glm4_2[,colSums(matrix_glm4_2 != 0) != 0]
+
+cd_glm4_2 <- colldiag(matrix_glm4_2)
+print(cd_glm4_2)
+str(cd_glm4_2)
+cd_glm4_2$condindx
+cd_glm4_2$pi[53:54,]
+```
+
+Previous continua a dare problemi di multicollinearità. Lo ritolgo all'origine.
+
+
+##Bontà adattamento modello
+
+```{r HL glm3}
+hl_glm4_2 <- hoslem.test(training_set_vsa$y =="yes", fitted(glm4_2_vsa), g=10)
+hl_glm4_2
+```
+
+Nada.
+
+##Stima delle performance predittive
+
+```{r glm4 AUC on validation}
+glm4_2_vsa_predictions  <- predict(glm4_2_vsa, validation_set_vsa, type="response")
+
+AUC_glm4_2_vsa <- roc(validation_set_vsa$y, glm4_2_vsa_predictions, levels=c("no", "yes"))
+AUC_glm4_2_vsa$auc
+```
+
+AUC di 0.7556. Senza togliere le variabili con basso p.value eravamo a 0.755, praticamente performance identiche con stessi problemi di multicollinearità Giusto per scrupolo voglio vedere se gli errori standard sono inferiori nel secondo caso (anche se solo il principio della parsimonia basta a giustificare il secondo modello).
+
+```{r}
+a <- tidy(glm3_vsa)
+b <- tidy(glm4_2_vsa)
+glm_comp_3_and_4_2 <- a %>%
+        inner_join(b, by = "term") %>%
+        select(term, SE_glm3 = std.error.x, SE_glm4_2 =  std.error.y) %>%
+        mutate(comp_SE = SE_glm4_2 - SE_glm3) %>%
+        arrange(comp_SE)
+```
+
+Quasi tutti inferiori, anche se di poco. Mi domando se un tale misero vantaggio di SE e di AUC mi debba indurre a escludere delle variabili. Preferire glm3 o glm4? Mah. Considera però che glm3 ha il problema del rank e che in glm4 ho valutato i p-value senza la correzione di bonferroni.

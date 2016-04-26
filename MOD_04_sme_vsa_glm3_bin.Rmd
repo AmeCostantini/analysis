@@ -1,0 +1,57 @@
+---
+title: "Untitled"
+author: "Americo"
+date: "25 aprile 2016"
+output: html_document
+---
+
+Modello simile a glm1, ma usando i fattori invece delle variabili quantitative quando possibile
+
+```{r formula glm3 vsa}
+formula_glm3 <- y ~ age_class + job + marital + balance_class + housing + loan + contact + day + month + campaign_class + pdays_class + age_class*marital + age_class*job + loan*housing
+```
+
+```{r glm3 vsa building}
+glm3_vsa <- glm(formula_glm3, family = "binomial", data = training_set_vsa)
+
+summary(glm3_vsa) #AIC molto basso, è normale la sovrastima delle performance, che non vuol dire overfitting.
+```
+
+AIC più bassa sinora.
+
+#Diagnostica
+
+##Multicollinearità
+
+```{r glm 3 coll}
+matrix_glm3 <- model.matrix(glm3_vsa)
+matrix_glm3 <- matrix_glm3[,colSums(matrix_glm3 != 0) != 0]
+
+cd_glm3 <- colldiag(matrix_glm3)
+print(cd_glm3)
+str(cd_glm3)
+cd_glm3$condindx
+cd_glm3$pi[84,]
+```
+
+Pdays  e previous_class danno un problema di multicollinearità. Tolgo previous class  eil problema non c'è più.
+
+##Bontà adattamento modello
+
+```{r HL glm3}
+hl_glm3 <- hoslem.test(training_set_vsa$y =="yes", fitted(glm3_vsa), g=10)
+hl_glm3
+```
+
+Il test, se rigettato, rigetta l'ipotesi di buon adattamento. Qui non si può rigettare. è vero che c'è il problema che il numero di gruppi non dovrebbe essere inferiore a p+1 (http://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/), e io con le variabili dummy ho molte p. Ma anche se i gruppi sono 100, il p.value è significativo, quindi il buon adattamento va rigettato.
+
+#Stima performance predittive
+
+```{r glm3 AUC on validation}
+glm3_vsa_predictions  <- predict(glm3_vsa, validation_set_vsa, type="response")
+
+AUC_glm3_vsa <- roc(validation_set_vsa$y, glm3_vsa_predictions, levels=c("no", "yes"))
+AUC_glm3_vsa$auc
+```
+
+AUC del modello sul validation set è 0.7543 (stabile anche dopo aver tolo previous per multicollinearità). Con quella competerà con gli altri modelli, se la diagnostica non me lo fa cambiare.

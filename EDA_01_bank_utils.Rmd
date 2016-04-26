@@ -1,6 +1,7 @@
 #Caricamento package
 
 ```{r packages, message=FALSE}
+require(broom)
 require(ResourceSelection)
 require(MKmisc)
 require(perturb)

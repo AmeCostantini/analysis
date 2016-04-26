@@ -1,0 +1,28 @@
+---
+title: "Untitled"
+author: "Americo"
+date: "26 aprile 2016"
+output: html_document
+---
+
+```{r glm5 poutcome}
+formula_glm5_1 <- y ~ poutcome
+glm5_1_vsa <- glm(formula_glm5_1, family = "binomial", data = training_set_vsa)
+summary(glm5_1_vsa)
+```
+
+Alpha = 0.05 / ? Non si sa. Non ha senso fare la forward. Dovresti assumere un numero di variabili che incliderai, ma magari escludi qualcosa che andrebbe messo.
+
+
+```{r glm5 poutcome month}
+formula_glm5_2 <- y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + previous
+glm5_2_vsa <- glm(formula_glm5_2, family = "binomial", data = training_set_vsa)
+summary(glm5_2_vsa)
+glm5_2_vsa_table <- tidy(glm5_2_vsa)
+da_escludere <- glm5_2_vsa_table %>%
+        filter(p.value > 0.05/nrow(a))
+```
+
+Praticamente tutto. è evidente che il test perde di potenza, oppure che i test statistici per questa analisi tendono a considerare il modello non corretto (vedi anche HL). Bisogna rifarsi perciò alla AUC. La step tramite p.value è abortita.
+
+
