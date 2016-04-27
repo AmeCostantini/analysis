@@ -16,4 +16,4 @@
 
 #Model selection
 
-Io farei vincere il modello glm3, il binning senza uso di p.value. Posto che l'uso di p.value ha il problema di bonferroni, togliere variabili inutili non da vantaggi di errore standard (p.94 caffo) e che il numero di parametri non è enorme, e che la differenza di AUC è millesima, io mi terrei il modello 3.
+Io farei vincere il modello glm3, il binning senza uso di p.value. Posto che l'uso di p.value ha il problema di bonferroni, togliere variabili inutili non da vantaggi di errore standard (p.94 caffo) e che il numero di parametri non è enorme, e che la differenza di AUC è millesima, e che la AUCPR è superiore, io mi terrei il modello 3.
