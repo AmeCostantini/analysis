@@ -1,0 +1,28 @@
+---
+title: "Untitled"
+author: "Americo"
+date: "27 aprile 2016"
+output: html_document
+---
+
+```{r}
+# The train and test set are loaded into your workspace.
+
+# Set random seed. Don't remove this line
+set.seed(1)
+
+# Load the rpart, rattle, rpart.plot and RColorBrewer package
+library("rpart")
+library("rpart.plot")
+library("RColorBrewer")
+library("rattle")
+
+# Build a tree model: tree
+tree <- rpart(y ~ age + job + marital + balance + housing + loan + contact + day + month + campaign + pdays + previous, data = training_set_vsa, method = "class", control=rpart.control(minsplit=5, cp=0.001))
+
+# Draw the decision tree
+pred <- predict(tree, validation_set_vsa, type = "class")
+conf <- table(validation_set_vsa$y, pred)
+conf
+```
+

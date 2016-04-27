@@ -59,5 +59,12 @@ AUC_glm1_vsa$auc
 
 AUC del modello sul validation set è 0.746. Con quella competerà con gli altri modelli, se la diagnostica non me lo fa cambiare.
 
+Voglio sperimentare anche la AUCPR, che forse è miglior indicatore per classi molto sbilanciate (http://stats.stackexchange.com/questions/7207/roc-vs-precision-and-recall-curves)
 
+
+```{r glm1 AUCPR on validation}
+AUCPR_glm1_vsa <- pr.curve(glm1_vsa_predictions, weights.class0 = validation_set_vsa$y == "yes", curve=T)
+AUCPR_glm1_vsa
+plot(AUCPR_glm1_vsa)
+```
 

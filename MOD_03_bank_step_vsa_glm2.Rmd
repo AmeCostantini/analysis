@@ -67,3 +67,11 @@ AUC_glm2_vsa$auc
 ```
 
 Però. glm2 ha AUC di 0.7463 contro 0.746 di glm1. Per ora vince la step contro di me.
+
+Vediamo la AUCPR
+
+```{r glm2 AUCPR on validation}
+AUCPR_glm2_vsa <- pr.curve(glm2_vsa_predictions, weights.class0 = validation_set_vsa$y == "yes", curve=T)
+AUCPR_glm2_vsa
+plot(AUCPR_glm2_vsa)
+```

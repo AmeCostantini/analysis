@@ -40,7 +40,7 @@ cd_glm4_2 <- colldiag(matrix_glm4_2)
 print(cd_glm4_2)
 str(cd_glm4_2)
 cd_glm4_2$condindx
-cd_glm4_2$pi[53:54,]
+cd_glm4_2$pi[48,]
 ```
 
 Previous continua a dare problemi di multicollinearità. Lo ritolgo all'origine.
@@ -62,6 +62,7 @@ glm4_2_vsa_predictions  <- predict(glm4_2_vsa, validation_set_vsa, type="respons
 
 AUC_glm4_2_vsa <- roc(validation_set_vsa$y, glm4_2_vsa_predictions, levels=c("no", "yes"))
 AUC_glm4_2_vsa$auc
+plot(AUC_glm4_2_vsa, legacy.axes=TRUE)
 ```
 
 AUC di 0.7556. Senza togliere le variabili con basso p.value eravamo a 0.755, praticamente performance identiche con stessi problemi di multicollinearità Giusto per scrupolo voglio vedere se gli errori standard sono inferiori nel secondo caso (anche se solo il principio della parsimonia basta a giustificare il secondo modello).
@@ -77,3 +78,10 @@ glm_comp_3_and_4_2 <- a %>%
 ```
 
 Quasi tutti inferiori, anche se di poco. Mi domando se un tale misero vantaggio di SE e di AUC mi debba indurre a escludere delle variabili. Preferire glm3 o glm4? Mah. Considera però che glm3 ha il problema del rank e che in glm4 ho valutato i p-value senza la correzione di bonferroni.
+
+
+```{r glm3 AUCPR on validation}
+AUCPR_glm4_2_vsa <- pr.curve(glm4_2_vsa_predictions, weights.class0 = validation_set_vsa$y == "yes", curve=T)
+AUCPR_glm4_2_vsa
+plot(AUCPR_glm4_2_vsa)
+```
