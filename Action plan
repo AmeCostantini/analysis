@@ -25,18 +25,13 @@
 * selezionare il modello vincente, con AUROC maggiore
 * applicare il modello a training completo
 * testare definitivamente il modello
+* misurare le performance del modello
 
 
 #Commento stato dell'arte
 
-Ho iniziato a sperimentare più modelli. Per ora uno con selezione variabili sopra 0.02, 
-salvo interazioni. Uno simile ma con le quantitative binnate(chiuso issue su ntile, correttamente aperto), che ha poi portato a togliere una variabile (previous) 
-per multicollinearità, e uno da procedura step.
-
-HL mai significativa.
-
-Ora manca un modello fatto coi p.value (sinora mai usati per escludere variabili, problema di bonferroni, problema di 
-interazione e dummy variable che rendono complicato escludere variabili, anche se forse qualcosa (specie da glm3) si può togliere.
-
-Ancora
+Ho iniziato a misurare le performance del modello. Ho scelto la soglia di cut off. Ho calcolato il DRLp.
+Mi manca la matrice di confusione.
+Mi manca la lift chart.
+Mi manca la stima economica dei benefici del modello.
 
