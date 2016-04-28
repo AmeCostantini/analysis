@@ -1,0 +1,97 @@
+---
+title: "PERF_glm3_bank"
+author: "Americo"
+date: "28 aprile 2016"
+output: html_document
+---
+
+#Auroc test
+
+```{r AUC test glm3}
+test_set_vsa$glm3_vsa_predictions_test  <- predict(glm3_vsa, test_set_vsa, type="response")
+AUC_glm3_vsa_test <- roc(test_set_vsa$y, test_set_vsa$glm3_vsa_predictions_test, levels=c("no", "yes"))
+AUC_glm3_vsa_test$auc
+```
+
+#Aucpr test
+
+```{r AUCPR glm3}
+AUCPR_glm3_vsa <- pr.curve(test_set_vsa$glm3_vsa_predictions_test, weights.class0 = test_set_vsa$y == "yes", curve=T)
+AUCPR_glm3_vsa
+```
+
+#Grafici
+
+```{r plot of ROC AUCPR and prob-cutoff and prob_class }
+plot(AUC_glm3_vsa_test, legacy.axis = TRUE)
+
+plot(AUCPR_glm3_vsa)
+
+g_estim_prob_class <- ggplot(data = test_set_vsa, aes(x = glm3_vsa_predictions_test, col = y)) +
+        geom_density()
+g_estim_prob_class
+
+#construisco un dataframe per il plot sensitivuty probability vs cutoff. vedi https://cran.r-project.org/web/packages/ROCR/ROCR.pdf
+
+prediction_test_obj <- prediction(predictions = test_set_vsa$glm3_vsa_predictions_test, labels = test_set_vsa$y)
+tpr_obj <-  performance(prediction_test_obj, measure = "tpr")
+fpr_obj <-  performance(prediction_test_obj, measure = "spec")
+ppv_obj <-  performance(prediction_test_obj, measure = "prec")       
+
+as.numeric( unlist (c@x.values) )
+
+sens_spec_cutoff_df_wide <- data.frame (cutoff = as.numeric( unlist ( tpr_obj@x.values) ), sensitivity = as.numeric( unlist ( tpr_obj@y.values) ), specificity = as.numeric( unlist ( fpr_obj@y.values) ), ppv = as.numeric( unlist (ppv_obj@y.values) ))
+
+sens_spec_cutoff_df_tidy <- sens_spec_cutoff_df_wide %>%
+        gather(key = type_indicator, value_indicator, sensitivity:ppv)
+
+g_sens_spec_cutoff <- ggplot(sens_spec_cutoff_df_tidy, aes(x = cutoff, y = value_indicator, col = type_indicator)) +
+        geom_line() + 
+        scale_x_continuous(breaks = seq(0.01, 1, 0.02)) +
+        scale_y_continuous(breaks = seq(0, 1, 0.05)) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_sens_spec_cutoff#eccellente!
+```
+
+Con questo grafico, `g_sens_spec_cutoff``, posso scegliere la soglia di cutoff che desidero e sapere tpr, fpr, ppv all'istante.
+
+#Decisione sulla soglia
+
+```{r cutoff decision}
+sens_spec_cutoff_df_wide %>%
+        filter(sensitivity > 0.47, sensitivity < 0.53)
+
+#Quando cutoff = 0.1758297 allora:
+
+sens_spec_cutoff_df_wide %>%
+        filter(cutoff > 0.1758, cutoff < 0.1759)
+#ho un tpr del 50%, un tnr del 88% e un ppv del 36%
+```
+
+La mia soglia è 0.1758
+
+#Confusion matrix
+```{r confusion matrix glm3}
+#usa prediction_test_obj di rocr, vedi sopra e https://cran.r-project.org/web/packages/ROCR/ROCR.pdf
+
+```
+
+
+#Diagnostic likelihood ration
+
+Non so la prevalence se va calcolata su tutto il dataset o solo sul training. Io direi solo sul training, perché nella CV è il campione che ho a disposizione per qualunque stima. peraltro è identica a quella di tutto il dataset.
+
+```{r DLR+ glm3}
+ppv_def <-sens_spec_cutoff_df_wide$ppv[sens_spec_cutoff_df_wide$cutoff > 0.1758 & sens_spec_cutoff_df_wide$cutoff < 0.1759]
+prevalence <- mean(training_set_vsa$y == "yes")
+DLRp <- ( (ppv_def/(1-ppv_def)) / (prevalence/(1-prevalence)) )
+DLRp  #sopra 4, buono.
+```
+
+
+
+```{r AULIFT glm3}
+
+```
+
+

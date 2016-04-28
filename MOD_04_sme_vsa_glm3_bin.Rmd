@@ -52,20 +52,6 @@ glm3_vsa_predictions  <- predict(glm3_vsa, validation_set_vsa, type="response")
 
 AUC_glm3_vsa <- roc(validation_set_vsa$y, glm3_vsa_predictions, levels=c("no", "yes"))
 AUC_glm3_vsa$auc
-
-
-glm3_vsa_predictions_test  <- predict(glm3_vsa, test_set_vsa, type="response")
-
-#parentesi su test
-AUC_glm3_vsa_test <- roc(test_set_vsa$y, glm3_vsa_predictions_test, levels=c("no", "yes"))
-AUC_glm3_vsa_test$auc
-coords(AUC_glm3_vsa_test, x="best")
-y_hat <- glm3_vsa_predictions_test > 0.1301616
-
-#vorrei un DLR+ migliore per garantire maggiore efficienza operativa
-y_hat <- glm3_vsa_predictions_test > 0.1801616
-
-table(y_hat, test_set_vsa$y)#con questa soglia di 0.18 tu puoi far sottoscrivere il contratto a metà degli interessati contattando il 16% della popolazione invece del 50% della stessa, cosa garantita da un classificatore casuale.
 ```
 
 AUC del modello sul validation set è 0.755 (stabile anche dopo aver tolo previous per multicollinearità). Con quella competerà con gli altri modelli, se la diagnostica non me lo fa cambiare.
