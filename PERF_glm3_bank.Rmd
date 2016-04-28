@@ -36,9 +36,7 @@ g_estim_prob_class
 prediction_test_obj <- prediction(predictions = test_set_vsa$glm3_vsa_predictions_test, labels = test_set_vsa$y)
 tpr_obj <-  performance(prediction_test_obj, measure = "tpr")
 fpr_obj <-  performance(prediction_test_obj, measure = "spec")
-ppv_obj <-  performance(prediction_test_obj, measure = "prec")       
-
-as.numeric( unlist (c@x.values) )
+ppv_obj <-  performance(prediction_test_obj, measure = "prec") 
 
 sens_spec_cutoff_df_wide <- data.frame (cutoff = as.numeric( unlist ( tpr_obj@x.values) ), sensitivity = as.numeric( unlist ( tpr_obj@y.values) ), specificity = as.numeric( unlist ( fpr_obj@y.values) ), ppv = as.numeric( unlist (ppv_obj@y.values) ))
 
@@ -73,11 +71,14 @@ La mia soglia è 0.1758
 #Confusion matrix
 ```{r confusion matrix glm3}
 #usa prediction_test_obj di rocr, vedi sopra e https://cran.r-project.org/web/packages/ROCR/ROCR.pdf
-
+test_set_vsa$yhat <- factor(as.numeric(test_set_vsa$glm3_vsa_predictions_test > 0.1758))
+test_set_vsa$yact <- factor(as.numeric(test_set_vsa$y == "yes"))
+conf_matrix <- confusionMatrix(test_set_vsa$yhat, test_set_vsa$yact, positive ="1")
+conf_matrix
 ```
 
 
-#Diagnostic likelihood ration
+#Diagnostic likelihood ratio
 
 Non so la prevalence se va calcolata su tutto il dataset o solo sul training. Io direi solo sul training, perché nella CV è il campione che ho a disposizione per qualunque stima. peraltro è identica a quella di tutto il dataset.
 
@@ -91,7 +92,19 @@ DLRp  #sopra 4, buono.
 
 
 ```{r AULIFT glm3}
-
+lift_df <- data.frame(yact = test_set_vsa$yact, y_pred_prob = test_set_vsa$glm3_vsa_predictions_test)
+lift_df_sum <- lift_df %>%
+        arrange(y_pred_prob) %>%
+        mutate(groups = ntile(y_pred_prob, 10)) %>%
+        group_by(groups) %>%
+        summarise(n_clienti = n(), n_y = sum(yact == "1")) %>%
+        arrange(desc(groups)) %>%
+        mutate(perc_clienti = n_clienti / sum(n_clienti), perc_clienti_positivi = n_y / sum(n_y), perc_cum_clienti_positivi               = cumsum(perc_clienti_positivi), perc_cum_clienti = cumsum(perc_clienti), perc_cum_clienti_exp = perc_cum_clienti) %>%
+        select(groups, perc_cum_clienti, perc_cum_clienti_positivi, perc_cum_clienti_exp) %>%
+        gather(key = type_indicator, value_indicator, perc_cum_clienti_positivi:perc_cum_clienti_exp) %>%
+        ggplot(aes(x = perc_cum_clienti, y = value_indicator, col = type_indicator)) + geom_point (size = 3) + geom_line()
+lift_df_sum
 ```
 
+*abbellire un po' la aulift, e magari enucleare gli oggetti creati.*
 

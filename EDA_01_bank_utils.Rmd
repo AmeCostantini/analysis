@@ -1,6 +1,7 @@
 #Caricamento package
 
 ```{r packages, message=FALSE}
+require(gains)
 require(PRROC)
 require(broom)
 require(ResourceSelection)
