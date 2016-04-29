@@ -2,7 +2,7 @@
 title: "EDA_campaign_univariate_contacts"
 author: "Americo"
 date: "10 aprile 2016"
-output: html_document
+output: word_document
 ---
 
 

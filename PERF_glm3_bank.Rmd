@@ -23,7 +23,7 @@ AUCPR_glm3_vsa
 #Grafici
 
 ```{r plot of ROC AUCPR and prob-cutoff and prob_class }
-plot(AUC_glm3_vsa_test, legacy.axis = TRUE)
+plot(AUC_glm3_vsa_test, legacy.axes = TRUE)
 
 plot(AUCPR_glm3_vsa)
 
@@ -90,6 +90,7 @@ DLRp  #sopra 4, buono.
 ```
 
 
+#Lift chart cumulato
 
 ```{r AULIFT glm3}
 lift_df <- data.frame(yact = test_set_vsa$yact, y_pred_prob = test_set_vsa$glm3_vsa_predictions_test)
@@ -99,12 +100,15 @@ lift_df_sum <- lift_df %>%
         group_by(groups) %>%
         summarise(n_clienti = n(), n_y = sum(yact == "1")) %>%
         arrange(desc(groups)) %>%
-        mutate(perc_clienti = n_clienti / sum(n_clienti), perc_clienti_positivi = n_y / sum(n_y), perc_cum_clienti_positivi               = cumsum(perc_clienti_positivi), perc_cum_clienti = cumsum(perc_clienti), perc_cum_clienti_exp = perc_cum_clienti) %>%
-        select(groups, perc_cum_clienti, perc_cum_clienti_positivi, perc_cum_clienti_exp) %>%
-        gather(key = type_indicator, value_indicator, perc_cum_clienti_positivi:perc_cum_clienti_exp) %>%
-        ggplot(aes(x = perc_cum_clienti, y = value_indicator, col = type_indicator)) + geom_point (size = 3) + geom_line()
+        mutate(perc_clienti = n_clienti / sum(n_clienti), perc_clienti_positivi = n_y / sum(n_y), perc_cum_clienti_pos_mod               = cumsum(perc_clienti_positivi), perc_cum_clienti = cumsum(perc_clienti), perc_cum_clienti_pos_exp = perc_cum_clienti) %>%
+        select(groups, perc_cum_clienti, perc_cum_clienti_pos_mod, perc_cum_clienti_pos_exp) %>%
+        gather(key = type_indicator, value_indicator, perc_cum_clienti_pos_mod:perc_cum_clienti_pos_exp) %>%
+        ggplot(aes(x = perc_cum_clienti, y = value_indicator, col = type_indicator)) + 
+        geom_point (size = 3) + 
+        geom_line() +
+        scale_x_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        geom_vline(xintercept = 0.17)
 lift_df_sum
 ```
-
-*abbellire un po' la aulift, e magari enucleare gli oggetti creati.*
 

@@ -1,0 +1,1642 @@
+---
+title: "Untitled"
+author: "Americo"
+date: "29 aprile 2016"
+output: html_document
+---
+#Caricamento package
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE)
+```
+
+```{r packages, message=FALSE}
+require(gains)
+require(PRROC)
+require(broom)
+require(ResourceSelection)
+require(MKmisc)
+require(perturb)
+require(caret)
+require(DAAG)
+library(pROC)
+library(ROCR)
+require(MASS)
+library(devtools)
+require(GGally)
+library(woe)
+require(ggplot2)
+require(dplyr)
+require(tidyr)
+select <- dplyr::select
+```
+
+#Set up cartelle e creazione dataset
+
+```{r directory e dataset}
+getwd()
+setwd("/Users/Americo/Documents/Education/Unitelma/tesi/data_analysis/dataset")
+bank0_df <- read.csv(file = "bank_full.csv", sep = ";")
+bank0 <- tbl_df(read.csv(file = "bank_full.csv", sep = ";"))
+bank0_sm <- read.csv(file = "bank.csv", sep = ";")
+```
+
+#Informazioni sul dataset
+
+##Input variables
+
+###bank client data
+ 
+* 1 - age (numeric)
+*    2 - job : type of job (categorical: "admin.","unknown","unemployed","management","housemaid","entrepreneur","student", "blue-collar","self-employed","retired","technician","services") 
+*    3 - marital : marital status (categorical: "married","divorced","single"; note: "divorced" means divorced or widowed)
+*    4 - education (categorical: "unknown","secondary","primary","tertiary")
+*    5 - default: has credit in default? (binary: "yes","no")
+*    6 - balance: average yearly balance, in euros (numeric) 
+*    7 - housing: has housing loan? (binary: "yes","no")
+*    8 - loan: has personal loan? (binary: "yes","no")
+*    # related with the last contact of the current campaign:
+*    9 - contact: contact communication type (categorical: "unknown","telephone","cellular") 
+*   10 - day: last contact day of the month (numeric)
+*   11 - month: last contact month of year (categorical: "jan", "feb", "mar", ..., "nov", "dec")
+*   12 - duration: last contact duration, in seconds (numeric)
+
+###Other attributes:
+
+*   13 - campaign: number of contacts performed during this campaign and for this client (numeric, includes last contact)
+*   14 - pdays: number of days that passed by after the client was last contacted from a previous campaign (numeric, -1 means client was not previously contacted)
+*   15 - previous: number of contacts performed before this campaign and for this client (numeric)
+*   16 - poutcome: outcome of the previous marketing campaign (categorical: "unknown","other","failure","success")
+
+##Output variable (desired target)
+
+*   17 - y - has the client subscribed a term deposit? (binary: "yes","no")
+
+It should be stressed that due to internal competition and current financial crisis, there are huge pressures for European banks to increase a financial asset. To solve this issue, one adopted strategy is offer attractive long-term deposit applications with good interest rates, in particular by using directed marketing campaigns. Also, the same drivers are pressing for a reduction in costs and time. Thus, there is a need for an improvement in efficiency: lesser contacts should be done, but an approximately number of successes (clients subscribing the deposit) should be kept.
+
+##Missing Attribute Values
+None
+
+#Esplorazione del dataset
+
+##Esplorazione dimensioni
+
+```{r exp dataset}
+str(bank0)
+dim(bank0)
+```
+
+Non ci sono variabili numeriche, solo interi e fattori. Da capire se servirà qualche trasformazione
+#Esplorazione tabellare distribuzioni univariate
+
+```{r 5 quantities}
+summary(bank0)
+```
+
+##Age
+
+```{r age graph}
+g_age <- ggplot(bank0, aes(x = factor(age))) + geom_bar(col = "white")
+g_age
+g_age_y <- ggplot(bank0, aes(x = factor(age), fill = y)) + 
+        geom_bar(col = "white", position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_age_y
+```
+
+Vediamo che dai 30 ai 59 anni l'incidenza di sottoscrizioni è pari a quella complessiva; c'è anche da dire che dopo i 60 non ci sono numerosità grandi:
+
+```{r age table}
+t_age_y <- bank0 %>%
+        group_by (factor(age)) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_age_y
+```
+
+Una idea potrebbe essere quella di fare un binning 18-30, 31-59, 60 o più. Certo che la variabile sembra predittiva.
+
+```{r age IV}
+bank0$age_num <- as.numeric(bank0$age)
+bank0$age_class <- cut(bank0$age_num, breaks = c(min(bank0$age_num)-1, 30, 59, max(bank0$age_num)))
+bank_age_na <- bank0[is.na(bank0$age_class),]
+
+age_class_woe <- bank0 %>%
+        select(age_class, y) %>%
+        group_by(age_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+age_class_woe$woe <- log(age_class_woe$perc_no / age_class_woe$perc_y)
+age_class_IV <- sum((age_class_woe$perc_no - age_class_woe$perc_y) * age_class_woe$woe)
+```
+
+```{r}
+bank0 %>%
+        select(age_class, y) %>%
+        group_by(age_class) %>%
+        summarise(n = n(), perc_y = mean(y =="yes"))
+```
+
+##Job
+
+```{r job graph}
+g_job  <- ggplot(bank0, aes(x = job)) +
+        geom_bar()
+g_job
+g_job_y  <- ggplot(bank0, aes(x = job, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_job_y
+```
+
+Non molto predittivo, c'è l'età che fa da counfounding e spiega la stessa variabilità di studenti e pensionati.
+
+```{r job table}
+t_job_y <- bank0 %>%
+        group_by (job) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_job_y
+```
+
+Non mi spiego perché i disoccupati tendano a fare più depositi. Forse in questa categoria ci sono giovani a cui il deposito viene regalato dai genitori.
+
+```{r job IV}
+job_woe <- bank0 %>%
+        select(job, y) %>%
+        group_by(job) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+job_woe$woe <- log(job_woe$perc_no / job_woe$perc_y)
+job_IV <- sum((job_woe$perc_no - job_woe$perc_y) * job_woe$woe)
+
+#woe_func <- function(x) {
+        #bank0 %>%
+        #select_(x, "y") %>%
+        #group_by_(x) %>%
+        #summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        #mutate(perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        #select(starts_with("perc"))
+
+#paste(c("x","_","IV"), collapse="") <- sum((perc_no - perc_y) * log(perc_no / perc_y))       
+#}
+#woe_func("job")#la NSE è troppo complessa
+```
+
+##Marital
+
+```{r marital graph}
+g_marital  <- ggplot(bank0, aes(x = marital)) +
+        geom_bar()
+g_marital
+g_marital_y  <- ggplot(bank0, aes(x = marital, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_marital_y
+```
+
+Non me lo aspettavo. Pochissima predittività della variabile
+
+```{r marital table}
+t_marital_y <- bank0 %>%
+        group_by (marital) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_marital_y
+```
+
+I single tendono a farne un po' di più. Anche qui, confounding dell'età giovanile?
+
+```{r marital IV}
+marital_woe <- bank0 %>%
+        select(marital, y) %>%
+        group_by(marital) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+marital_woe$woe <- log(marital_woe$perc_no / marital_woe$perc_y)
+marital_IV <- sum((marital_woe$perc_no - marital_woe$perc_y) * marital_woe$woe)
+```
+
+##Education
+
+```{r education graph}
+g_education  <- ggplot(bank0, aes(x = education)) +
+        geom_bar()
+g_education
+g_education_y  <- ggplot(bank0, aes(x = education, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_education_y
+```
+
+Sembra che a maggior livello culturale segua maggiore propensione a sottoscrivere depositi. Da capire se qui gli studenti fanno confounding, anche se ci credo meno. Penso (sarà da verificare con qualche analisi trivariata) che anche tra i trentacinquenni ci siano molti laureati.
+
+
+```{r education table}
+t_education_y <- bank0 %>%
+        group_by (education) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_education_y
+```
+
+```{r education IV}
+education_woe <- bank0 %>%
+        select(education, y) %>%
+        group_by(education) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+education_woe$woe <- log(education_woe$perc_no / education_woe$perc_y)
+education_IV <- sum((education_woe$perc_no - education_woe$perc_y) * education_woe$woe)
+```
+
+##Default
+
+```{r default graph}
+g_default  <- ggplot(bank0, aes(x = default)) +
+        geom_bar()
+g_default
+g_default_y  <- ggplot(bank0, aes(x = default, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_default_y
+```
+
+Pochissimi in default, i no si comportanto come il campione, ma d'altronde sono pressoché tutto il campione. Certo il sì è un po' predittivo, ma poca numerosità.
+
+
+```{r default table}
+t_default_y <- bank0 %>%
+        group_by (default) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_default_y
+```
+
+```{r default IV}
+default_woe <- bank0 %>%
+        select(default, y) %>%
+        group_by(default) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+default_woe$woe <- log(default_woe$perc_no / default_woe$perc_y)
+default_IV <- sum((default_woe$perc_no - default_woe$perc_y) * default_woe$woe)
+```
+
+##Balance
+
+```{r balance graph}
+g_balance <- ggplot(bank0, aes(x = 1, y = balance)) + 
+        geom_boxplot()
+g_balance
+
+g_balance_y <- ggplot(bank0, aes(x = y, y = balance)) + 
+        geom_boxplot()
+g_balance_y
+```
+
+è una distribuzione con un range molto ampio ma un range interquartile molto ristretto, sia complessivamente che per i due gruppi. Provo a capire se posso analizzare i dati fino al 95 percentile
+
+```{r balance table}
+quantile(bank0$balance, c(seq(0.1, 1, 0.05)))
+balance_p_95 <- quantile(bank0$balance, 0.95)
+```
+
+```{r balance graph p95}
+bank0_p95 <- bank0 %>%
+        filter(balance <= balance_p_95)
+g_balance_p95 <- ggplot(bank0_p95, aes(x = 1, y = balance)) + 
+        geom_boxplot()
+g_balance_p95
+
+g_balance_y_p95 <- ggplot(bank0_p95, aes(x = y, y = balance)) + 
+        geom_boxplot()
+g_balance_y_p95
+```
+
+Ora comincia a essere evidente che chi sottoscrive depositi tende a avere saldo sul conto più alto; vale per la mediana del gruppo sì, ma anche per il terzo quartile. Quindi per saldi che crescono si tende a sottoscrivere più depositi, il che ha senso. più soldi hai, più ne puoi depositare.
+
+```{r balance class table}
+bank0$balance <- as.numeric(bank0$balance)
+
+balance_quantile <- quantile(bank0$balance, probs = seq(0.1,1,0.1))
+
+bank0$balance_class <- cut(bank0$balance, breaks = c(min(bank0$balance)-1, -1, balance_quantile), right = TRUE, labels = c("negative", "0", "(0, 22]", "(22,131]", "(131,272]", "(272,448]", "(448,701]", "(701,1126]", "(1126,1859]", "(1859,3574]", "(3574,102127]"))
+summary(bank0$balance_class)
+bank_balance_na <- bank0[is.na(bank0$balance_class),] #ok
+
+
+t_balance_class_y <- bank0 %>%
+        group_by (balance_class) %>%
+        summarise(n(), mean(y == "yes"))
+```
+
+Esatto. al crescere del saldo cresce la quota di coloro che sottoscrivono.
+
+```{r balance IV}
+balance_class_woe <- bank0 %>%
+        select(balance_class, y) %>%
+        group_by(balance_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+balance_class_woe$woe <- log(balance_class_woe$perc_no / balance_class_woe$perc_y)
+balance_class_IV <- sum((balance_class_woe$perc_no - balance_class_woe$perc_y) * balance_class_woe$woe)
+```
+
+
+##Housing
+
+```{r housing graph}
+g_housing  <- ggplot(bank0, aes(x = housing)) +
+        geom_bar()
+g_housing
+g_housing_y  <- ggplot(bank0, aes(x = housing, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_housing_y
+```
+
+Una buona predittività, peraltro due gruppi di quasi uguale dimensione. Chi ha già un mutuo per la casa non sottoscrive depositi a lungo termine, ovvio.
+
+
+```{r housing table}
+t_housing_y <- bank0 %>%
+        group_by (housing) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_housing_y
+```
+
+```{r housing IV}
+housing_woe <- bank0 %>%
+        select(housing, y) %>%
+        group_by(housing) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+housing_woe$woe <- log(housing_woe$perc_no / housing_woe$perc_y)
+housing_IV <- sum((housing_woe$perc_no - housing_woe$perc_y) * housing_woe$woe)
+```
+
+
+##Loan
+
+```{r loan graph}
+g_loan  <- ggplot(bank0, aes(x = loan)) +
+        geom_bar()
+g_loan
+g_loan_y  <- ggplot(bank0, aes(x = loan, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_loan_y
+```
+
+Una buona predittività, ma minore del mutuo. Chi ha un prestito personale tende a sottoscrivere meno depositi, certo che è un gruppo più ristretto, e infatti chi non li sottoscrive si comporta pressoché come il campione (un pelino più sottoscrivente).
+
+
+```{r loan table}
+t_loan_y <- bank0 %>%
+        group_by (loan) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_loan_y
+```
+
+I volumi sono comunque significativi.
+
+```{r loan IV}
+loan_woe <- bank0 %>%
+        select(loan, y) %>%
+        group_by(loan) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+loan_woe$woe <- log(loan_woe$perc_no / loan_woe$perc_y)
+loan_IV <- sum((loan_woe$perc_no - loan_woe$perc_y) * loan_woe$woe)
+```
+
+
+
+
+
+
+#Variabili di Contatto
+
+##Contact
+
+```{r contact graph}
+g_contact  <- ggplot(bank0, aes(x = contact)) +
+        geom_bar()
+g_contact
+g_contact_y  <- ggplot(bank0, aes(x = contact, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_contact_y
+```
+
+Però, se la tipologia di contatto è sconosciuta non converte quasi nessuno, con cellulare più della media, e anche con telefono. buono a sapersi, ma che vorrà dire?
+
+```{r contact table}
+t_contact_y <- bank0 %>%
+        group_by (contact) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_contact_y
+```
+
+
+```{r contact IV}
+contact_woe <- bank0 %>%
+        select(contact, y) %>%
+        group_by(contact) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+contact_woe$woe <- log(contact_woe$perc_no / contact_woe$perc_y)
+contact_IV <- sum((contact_woe$perc_no - contact_woe$perc_y) * contact_woe$woe)
+```
+
+Finora la variabile più predittiva!
+
+##Day
+
+La trasformo in fattore, 31 livelli su 45000 osservazioni: ha senso
+
+```{r day graph}
+g_day  <- ggplot(bank0, aes(x = factor(day))) +
+        geom_bar()
+g_day
+g_day_y  <- ggplot(bank0, aes(x = factor(day), fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_day_y
+```
+
+Distribuzione trimodale, abbastanza strana. 
+
+```{r day table}
+t_day_y <- bank0 %>%
+        group_by (day) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_day_y
+```
+
+I due giorni di maggior conversione sono quelli con i minori contatti. Credo bassa predittività.
+
+```{r day IV}
+day_woe <- bank0 %>%
+        select(day, y) %>%
+        group_by(day) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+day_woe$woe <- log(day_woe$perc_no / day_woe$perc_y)
+day_IV <- sum((day_woe$perc_no - day_woe$perc_y) * day_woe$woe)
+```
+
+Bassa ma non bassissima.
+
+##Month
+
+```{r month graph}
+levels(bank0$month)
+class(bank0$month)
+bank0$month <- factor(bank0$month, levels = c("jan","feb","mar", "apr","may","jun", "jul","aug", "sep", "oct", "nov","dec"))
+g_month  <- ggplot(bank0, aes(x = month)) +
+        geom_bar()
+g_month
+g_month_y  <- ggplot(bank0, aes(x = month, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_month_y
+```
+
+Distribuzione molto concentrata in estate, con grande conversion nei mesi primaverili e autunnali. Perché? Pochissimi contatti, non più di centinaia. Il mese con più contatti ha la conversion più bassa. Potrebbe dipendendere dal fatto che minori quanttà di telefonate permettono maggiore qualità di vendita (vedi duration)? Forse, ma anche la stagionalità ha la sua parte. Chi pensa al futuro all'avvicinarsi dell'estate?
+
+
+```{r month table}
+t_month_y <- bank0 %>%
+        group_by (month) %>%
+        summarise (n = n(), perc_y = mean(y=="yes")) %>%
+        mutate (n_rel = n / sum(n)*100, n_rel_ind = 100/12) %>%
+        select(month, n, n_rel, n_rel_ind, perc_y)
+t_month_y
+```
+
+I  mesi di maggior conversione sono quelli con i minori contatti. Se anche l'information Value e il p.value sono favorevoli, potre non includere month perché non mi spiego l'associazione negativa tra conversion e volumi. Month è il mese di ultima chiamata, quella di chiusura. Il call center potrebbe aver fatto comunque molte chiamate non di chiusura nel mese, non è detto che maggio sia stato mese di maggior lavoro di dicembre. Tuttavia laddove si concentrano più ultime chiamate di chiusura si converte meno. Ci devo tornare a riflettere.
+
+
+```{r month IV}
+month_woe <- bank0 %>%
+        select(month, y) %>%
+        group_by(month) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+month_woe$woe <- log(month_woe$perc_no / month_woe$perc_y)
+month_IV <- sum((month_woe$perc_no - month_woe$perc_y) * month_woe$woe)
+```
+
+Varibile più predittiva finora!
+
+
+##Duration
+
+```{r duration graph}
+g_duration <- ggplot(bank0, aes(x = 1, y = duration)) + 
+        geom_boxplot()
+g_duration
+
+g_duration_y <- ggplot(bank0, aes(x = y, y = duration)) + 
+        geom_boxplot()
+g_duration_y
+```
+
+A chiamate più lunghe corrisponde una maggiore propensione alla conversion! Da capire se si fa riferimento alla penultima o all'ultima chiamata (credo la penultima sennò non avrebbe senso utilizzarla in un modello predittivo).
+Se è la penultima chiamata, si può immaginare che o un cliente di suo interessato ti tenga dipiù al telefono o che un venditore che lo tiene di più al telefono lo invoglia a comprare. Se l'ultima chiamata, be, c'è da valutae l'aumento dei tempi dovuto all'informativa legale e alla parte sottoscrittiva. Andrà analizzato comunque il rapporto con giorno e mese, perché in quelle varaiabili bassi volumi (poche chiamate, chiamate molto lunghe?) portavano alta conversion. 
+
+
+```{r duration class table}
+summary(bank0$duration)
+duration_quantile <- quantile(bank0$duration[bank0$duration != 0], probs = seq(0.1,1,0.1))
+bank0$duration_class <- cut(bank0$duration, breaks = c(-1, 0, duration_quantile), right = TRUE, labels = c("no call", "(0,58]",  "(58,89]", "(89,117]", "(117,147]"," (147,180]", "(180,223]", "(223,280]", "(280,368]", "(368,548]", "(548,4918]"))
+
+t_duration_class_y <- bank0 %>%
+        group_by (duration_class) %>%
+        summarise(n(), mean(y == "yes"))
+```
+
+```{r duration class graph}
+g_duration_class_y <- ggplot(bank0, aes(x = factor(duration_class), fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_duration_class_y
+```
+
+Esatto. al crescere della durata della chiamata cresce la quota di coloro che sottoscrivono, o viceversa.
+
+```{r duration IV} 
+#devo togliere i tre valori nulli di duration altrimenti la formula va in errore
+duration_class_woe <- bank0 %>%
+        filter(duration_class != "no call") %>%
+        select(duration_class, y) %>%
+        group_by(duration_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+duration_class_woe$woe <- log(duration_class_woe$perc_no / duration_class_woe$perc_y)
+duration_class_IV <- sum((duration_class_woe$perc_no - duration_class_woe$perc_y) * duration_class_woe$woe)
+```
+
+Ampiamente la più predittiva.
+
+##Campaign
+
+```{r campaign graph}
+g_campaign <- ggplot(bank0, aes(x = 1, y = campaign)) + 
+        geom_boxplot()
+g_campaign
+
+g_campaign_y <- ggplot(bank0, aes(x = y, y = campaign)) + 
+        geom_boxplot()
+g_campaign_y
+```
+
+Non mi sembra discrimini molto il numero di contatti precedenti.
+
+```{r campaign class table}
+bank0$campaign <- as.numeric(bank0$campaign)
+
+campaign_quantile <- quantile(bank0$campaign, probs = seq(0.1,1,0.1)) #considerando i quantili il binning lo faccio a mano
+
+bank0$campaign_class <- cut(bank0$campaign, breaks = c(0, 1, 2, 3, 4, 5, max(bank0$campaign)+1), right = TRUE, labels = c("1", "2", "3", "4", "5", "up 5"))
+summary(bank0$campaign_class)
+bank_campaign_na <- bank0[is.na(bank0$campaign_class),] 
+nrow(bank_campaign_na) #ok
+
+t_campaign_class_y <- bank0 %>%
+        group_by (campaign_class) %>%
+        summarise(n(), media = mean(y == "yes"))
+```
+
+```{r campaign class graph}
+g_campaign_class_y <- ggplot(bank0, aes(x = factor(campaign_class), fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_campaign_class_y
+```
+
+Andamento normale. La maggiore conversion si ha per tra il 30 e il quarantesimo percentile di contatti (da capire quanti contatti sono).
+
+
+```{r campaign IV}
+campaign_class_woe <- bank0 %>%
+        select(campaign_class, y) %>%
+        group_by(campaign_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+campaign_class_woe$woe <- log(campaign_class_woe$perc_no / campaign_class_woe$perc_y)
+campaign_class_IV <- sum((campaign_class_woe$perc_no - campaign_class_woe$perc_y) * campaign_class_woe$woe)
+
+
+############################################
+bank0 <- bank0 %>%
+        mutate(c_class = ntile(campaign, 10))
+
+c_class_woe <- bank0 %>%
+        select(c_class, y) %>%
+        group_by(c_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+c_class_woe$woe <- log(c_class_woe$perc_no / c_class_woe$perc_y)
+c_class_IV <- sum((c_class_woe$perc_no - c_class_woe$perc_y) * c_class_woe$woe)
+c_class_IV
+table(bank0$campaign, bank0$c_class)
+```
+
+Wow, che scoperta. Se raggruppo campaign in classi definite da me in base ai quantili, l'information value è 0.08, abbastanza basso. Se uso ntile è 0.58, suspicious. E infatti è sospetto: ntile raggruppa in 10 gruppi di pari dimensioni, ma questo per distribuzioni molto strette comporta che in due gruppi diversi (livelli diversi, valori diversi) ci sia la stessa informazione. Se si vede la cross table, i gruppi 1 2 e 3 sono identici, ma portano (casualmente!) dei woe molto diversi!
+
+##pdays
+
+Considerando che questa variabile include info quantitative (giorni dall'ultima campagna) e qualitativa (contattato si/no) procederò subito con una fattorializzazione.
+
+```{r pdays graph}
+
+g_pdays_quant <- bank0  %>% 
+        filter(pdays != -1) %>% 
+        ggplot(aes(x = 1, y = pdays)) + geom_boxplot()
+
+g_pdays_quant_y <- bank0  %>% 
+        filter(pdays != -1) %>% 
+        ggplot(aes(x = y, y = pdays)) + geom_boxplot()
+```
+ 
+Per chi è stato contattato in passato, è evidente che se è passato meno tempo tende a convertire di pià. 
+
+Proviamo un raggruppamento in classi. Potrei fare una classe per i mai contattati e poi 10 classi di pari frequenza.
+
+```{r pdays class table}
+pdays_quantile <- quantile(bank0$pdays[bank0$pdays != -1], probs = seq(0.1,1,0.1))
+bank0$pdays_class <- cut(bank0$pdays, breaks = c(-2, 0, pdays_quantile), right = TRUE, labels = c("no campaign", "(0,91]",  "(91,108]", "(108,159]", "(159,181]"," (181,194]", "(194,258]", "(258,300]", "(300,343]", "(343,362]", "(362,871]"))
+table(bank0$pdays_class)
+#le classi non sono di uguale numerosità, ma è normale perché ci sono numeri che si ripetono. ntile infatti crea classi di uguale numerosità in cui uno stesso valore può stare in due classi diverse. non va bene.
+```
+
+```{r pdays_class graph}
+g_pdays_class  <- ggplot(bank0, aes(x = pdays_class)) +
+        geom_bar()
+g_pdays_class#ovvio
+
+g_pdays_class_y  <- ggplot(bank0, aes(x = pdays_class, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_pdays_class_y
+```
+
+Variabile molto predittiva con andamento un po' anomalo. Molta conversione per pochi giorni trascorsi, poi meno, poi risale.
+
+```{r pdays_class IV}
+pdays_class_woe <- bank0 %>%
+        select(pdays_class, y) %>%
+        group_by(pdays_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+pdays_class_woe$woe <- log(pdays_class_woe$perc_no / pdays_class_woe$perc_y)
+pdays_class_IV <- sum((pdays_class_woe$perc_no - pdays_class_woe$perc_y) * pdays_class_woe$woe)
+```
+
+0.34. Buona predittività.
+
+##Previous
+
+```{r previous graph}
+
+g_previous_quant <- ggplot(bank0, aes(x = 1, y = previous)) + 
+        geom_boxplot()
+g_previous_quant
+
+g_previous_quant_y <- ggplot(bank0, aes(x = y, y = previous)) + 
+        geom_boxplot()
+g_previous_quant_y
+
+```
+
+Quasi nessuno è stato contattato, è una distribuzione fortemente asimettrica. Provo a fare i medesimi grafici togliendo il valore zero.
+
+```{r previous_nz graph}
+
+g_previous_nz_quant <- bank0  %>% 
+        filter(previous > 0) %>% 
+        ggplot(aes(x = 1, y = previous)) + geom_boxplot()
+g_previous_nz_quant
+
+g_previous_nz_quant_y <- bank0  %>% 
+        filter(previous > 0) %>% 
+        ggplot(aes(x = y, y = previous)) + geom_boxplot()
+g_previous_nz_quant_y
+```
+
+Comunque tutti valori molto molto bassi.
+
+Anche qui provo un raggruppamento in classi, 0 e non 0.
+ 
+```{r previous class table}
+previous_quantile <- quantile(bank0$previous[bank0$previous > 0], probs = seq(0.1,1,0.1))
+#Considerando i decili, preferisco fare 7 classi di non pari frequenza: da 0 a 6 e maggiore di 6
+bank0$previous_class <- cut(bank0$previous, breaks = c(0, 1, 2, 3, 4, 5, 7, max(bank0$previous)+1), right = FALSE, labels = c("0 contact", "1 contact",  "2 contact", "3 contact", "4 contact","5 or 6 contact", "+ 6 contact"))
+table(bank0$previous_class)
+summary(bank0$previous_class)#no NA
+#le classi non sono di uguale numerosità, ma è normale perché ci sono numeri che si ripetono. ntile infatti crea classi di uguale numerosità in cui uno stesso valore può stare in due classi diverse. non va bene.
+```
+
+```{r previous_class graph}
+g_previous_class  <- ggplot(bank0, aes(x = previous_class)) +
+        geom_bar()
+g_previous_class #6 contact è classe davvero poco numerosa, non so se ricondurla a 5 o più => yes
+
+g_previous_class_y  <- ggplot(bank0, aes(x = previous_class, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_previous_class_y
+```
+
+Variabile molto predittiva , tendenzialmente più contatti ci sono stati per la precedente campagna più si converte per questa. Chiaro, è gente interessata che forse ha anche convertito per la precedente campagna (da analizzare la correlazione tra previos e poutcome)
+
+```{r previous_class IV}
+previous_class_woe <- bank0 %>%
+        select(previous_class, y) %>%
+        group_by(previous_class) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+previous_class_woe$woe <- log(previous_class_woe$perc_no / previous_class_woe$perc_y)
+previous_class_IV <- sum((previous_class_woe$perc_no - previous_class_woe$perc_y) * previous_class_woe$woe)
+```
+
+0.22 discreta predittività.
+
+##Poutcome
+
+```{r poutcome graph}
+g_poutcome  <- ggplot(bank0, aes(x = poutcome)) +
+        geom_bar()
+g_poutcome
+g_poutcome_y  <- ggplot(bank0, aes(x = poutcome, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_poutcome_y
+```
+
+Unknown saranno i zero contact e i no camaign. Lo capirò analizzando la relazione tra queste variabili. Ovviamente per chi ha convertito la scora volta grande conversion anche stavolta.
+
+```{r poutcome table}
+t_poutcome_y <- bank0 %>%
+        group_by (poutcome) %>%
+        summarise (n = n(), perc_y = mean(y=="yes"))
+t_poutcome_y
+```
+
+```{r poutcome IV}
+poutcome_woe <- bank0 %>%
+        select(poutcome, y) %>%
+        group_by(poutcome) %>%
+        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
+        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
+        select (starts_with("perc"))
+poutcome_woe$woe <- log(poutcome_woe$perc_no / poutcome_woe$perc_y)
+poutcome_IV <- sum((poutcome_woe$perc_no - poutcome_woe$perc_y) * poutcome_woe$woe)
+```
+
+0.51, molto predittiva, ovviamente.
+
+
+##WOE
+
+Creiamo il vettore dell'information value e mettiamolo in un grafico a barre
+
+```{r all IV table}
+names(bank0)
+IV <- c(age_class_IV, job_IV, marital_IV, education_IV, default_IV, balance_class_IV, housing_IV, loan_IV, contact_IV, day_IV, month_IV, duration_class_IV, campaign_class_IV, pdays_class_IV, previous_class_IV, poutcome_IV)
+Variables <- c("age_class", "job", "marital", "education", "default", "balance_class", "housing", "loan", "contact", "day", "month", "duration_class", "campaign_class", "pdays_class", "previous_class", "poutcome")
+t_IV_all <- data.frame(Variables, IV)
+t_IV_all <- t_IV_all %>%
+        arrange(desc(IV))
+```
+
+Nota su duration: ho scoperto da uno studio su internet che duration fa riferimento alla chiamata di chiusura; perciò non è utilizzabile ai nostri fini, e l'information value sopra lo 0.5, anzi, sopra l'unità la rendeva una variabile assai sospetta. Quindi non la includeremo.
+
+```{r all IV graph}
+g_IV_all <- ggplot(t_IV_all, aes(x= reorder(Variables, IV), y= IV)) +
+  geom_bar(stat='identity') +
+  coord_flip()
+g_IV_all
+```
+
+Duration class è la più sospetta, troppo predittiva. Può darsi che i miei sospetti sul fatto che si riferisca alla chiamata di chiusura siano veri.
+
+
+
+#GGpairs
+
+```{r}
+#bank0_ggpairs <- ggpairs(bank0_sm) non è venuto bene
+```
+
+#Tre tipologie di relazione tra tre variabili
+Forniamo un breve commento ai tre esempi che seguono. 
+
+Al punto 1 presentiamo la situazione detta *spiegazione*. La tab. 3 mostra la tabella a doppia entrata originale che mette in relazione il numero delle pompe antincendio presenti sul luogo di un incendio e l’entità dei danni dello stesso. Come si vede tra le due variabili vi è relazione: solo il 30% degli incidenti è caratterizzato da danni superiori a 10.000$ se le autopompe non sono più di 2, sale al 59% se le autopompe sono più di 2. Naturalmente il numero di autopompe che vengono inviate sul luogo dell’incendio sarà legato alle dimensioni dell’incendio stesso e quindi al presumibile danno prodotto. Quindi occorre *controllare la relazione originale* introducendo la variabile “dimensione dell’incendio”. Si vede così in tab 1 che a parità di dimensioni dell’incendio, non vi è alcuna relazione tra numero di autopompe e ammontare del danno: se le dimensioni sono ridotte solo il 5% degli incendi produce un danno superiore a 10.000$, indipendentemente dal numero di autopompe presenti; questa percentuale sale all’80% quando l’incendio è di ampie dimensioni, anche qui indipendentemente dal numero di autopompe coinvolte. E’ ovvio che il numero di autopompe non può determinare le dimensioni dell’incendio, ma ne è una sua conseguenza. Il numero di autopompe non determina neppure l’ammontare dei danni. In realtà le dimensioni causano sia il numero di autopompe che l’ammontare del danno, così che la relazione tra autopompe e danno è fittizia, dovuta esclusivamente alla terza variabile, perciò *spuria*. => Non so se il confondimento implica che la relazione sia spuria.
+
+Al punto 2 presentiamo la situazione detta *interpretazione*. La tab. 6 mostra la tabella a doppia entrata originale che mette in relazione sesso e coinvolgimento in incidenti. Come si vede le donne hanno meno incidenti dei maschi: 32% e 44% rispettivamente. Bisogna però considerare che, al di là della prudenza e delle capacità di guida, il semplice fatto di percorrere mediamente più chilometri espone ad una probabilità maggiore di incorrere in incidenti. Se introduciamo come terza variabile la percorrenza chilometrica annua (tab. 4) vediamo che la relazione tra sesso e incidenti sparisce: se la percorrenza è bassa il 25% dei conducenti è coinvolto in incidenti qualunque sia il suo sesso; se la percorrenza è alta questa percentuale sale al 52% sia tra i maschi che tra le femmine. *A prima vista, la relazione tra sesso e incidenti potrebbe apparire spuria come nell’esempio precedente. Qui però vi è una differenza fondamentale: la terza variabile non è la causa delle due variabili originali (la percorrenza non causa il sesso del conducente)*. *Siamo invece in presenza di una catena causale: il sesso causa la percorrenza che a sua volta causa il coinvolgimento in incidenti. Insomma la relazione tra sesso e incidenti non è fittizia*, appare a prima vista incomprensibile perché è *mediata* da una variabile intermedia, la percorrenza. E’ in questo senso che si dice che la relazione originale è interpretata. Anche qui forniamo la tab. 5, forma compatta della tab. 4.=> l'interpretazione è quando tra la relazione causale tra2 variabili se ne include una terza intermedia che cambia l'interpretazione della relazione, che comunque ha senso, non è spuria come nobel e cioccolato.
+
+Al punto 3 presentiamo la situazione detta *specificazione*. La tab. 9 mostra la tabella a doppia entrata originale che mette in relazione orientamento politico e interesse per la politica. La tab. 7 mostra cosa accade *quando introduciamo come variabile di controllo*, il titolo di studio. In origine tra coloro che si collocano a sinistra il 28% ha un interesse alto, che scende al 15% tra i soggetti di destra. Questa differenza resta anche quando si introduce la terza variabile. Bisogna però notare che tra coloro che hanno un basso grado di istruzione i valori sono pari a 19% e 7%, cioè valori più bassi di quelli della relazione bivariata e con una differenza tra sinistra e destra equivalente. Tra coloro invece che hanno un elevato titolo di studio l’interesse per la politica aumenta: coloro che sono molto interessati crescono rispettivamente al 36% e al 18%, rispettivamente per sinistra e destra, con una differenza tra i due pari a 18 punti percentuali, contro i 13 della relazione originaria. Qui entrambe le variabili “orientamento” e “titolo” influenzano la dipendente ed è per questo che si parla di “specificazione” della relazione originale.=> a me questo sembra effetto di interazione: l'introduzione di una terza variabile porta a un effetto congiunto delle due indipendenti che è piu (perché cambiano le differenze tra i valori) della loro moltiplicazione.
+
+#Link utili
+
+* [epidemiologia1](http://www.quadernodiepidemiologia.it/epi/freq/stn_mis.htm)
+* [epidemiologia2](http://www.quadernodiepidemiologia.it/epi/assoc/ass_nc.htm)
+* [confounding and interaction](https://www.ctspedia.org/do/view/CTSpedia/InterConfound)
+* [stratified analysis - il più importante](http://www.sjsu.edu/faculty/gerstman/StatPrimer/stratified.PDF)
+
+L'ultimo link, un pdf, è semplicemente illuminante. Così come il paragrafo che ho copiato sopra.
+
+#Confounding and interaction: crude vs stratified analysis.
+Confounding (from the Latin confundere: to mix together) is a *distortion of an association* between an exposure (E) and disease (D) brought about by extraneous factors (C1, C2, etc). Since confounding is a systematic (not random) error, hypothesis testing cannot be used to detect it. It is a judgement based science. The analyst should start with simple comparisons of means and proportions.
+
+Interaction, as distinct from confounding, is the interdependent operation of two or more factors to produce an unanticipated effect. Interactions is usually addressed by reporting data by subgroups.
+
+Measures of association in the aggregate are called crude measures of association.
+
+Stratification might reveal otherwise hidden confounding and interaction. Example with RR; se il RR crudo è 4.00, e stratificando per i tre livelli di C abbiamo sempre RRC=4.00, allora la stratificazione è superflua. Se RRC = 1.00 sempre, allora c'è confounding. Se RRC = 1.00, 3.00, 25.00, c'è interazione.
+
+Spesso c'è in parte confounding e in parte interaction. The best estimate of association is both valid and precise. If interaction is present, strata-specific measures of association are reported. If interaction is absent but confounding is present, summary (adjusted) measures of association are reported. If neither interaction nor confounding are present, crude (unadjusted) measures of association are reported. In general, the most parsimoniously unconfounded presentation of the data is preferred. If the association between the exposure and disease is not found by scrutinizing the data in the 2-by-2 table, it's hard to support. Simple is better. 
+Qui si parla di RR e di quale va riportato se c'è confounding e/o se c'è interaction.
+
+##previous e poutcome
+
+In questo caso sia il numero di contatti della precedente campagna che l'esito della precedente campagna sono predittive. Solo che osservando che al crescere dei contatti della precedente campagna cresce la conversion dell'attuale, mi domando se in realtà non sia stato la predisposizione a convertire della precedente campagna a generare sia tanti contatti (mi faccio chiamare e risponso perché interessato) che l'attuale conversion (ero e sono interessato a sottoscrivere prodotti aggiuntivi).
+
+
+```{r previos_poutcome_y table}
+t_previous_y <- bank0 %>%
+        group_by(previous_class) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(freq_rel = n / sum(n)) %>%
+        select(previous_class, y_rate)
+
+t_previous_poutcome_y <- bank0 %>%
+        group_by(previous_class, poutcome) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(freq_rel = n / sum(n)) %>%
+        select(previous_class, poutcome, y_rate) %>%
+        spread(previous_class, y_rate)
+
+g_previous_class_poutcome_f <- g_previous_class + facet_wrap(~poutcome)
+g_previous_class_poutcome <- ggplot(bank0, aes(x = factor(previous_class), fill = poutcome)) +
+        geom_bar(position = "fill")
+g_previous_poutcome_y <- g_previous_class_y + facet_wrap(~poutcome)
+g_previous_class_y
+```
+
+Ora, per ogni esito della precedente campagna, il numero dei contatti discrimina molto meno che nella crude analysis (tranne che per esito sconosciuto, che però coincide con contati zero, cioè nessuna partecipazione alla precedente campagna). Perciò la mia ipotesi è abbastanza confermata, poutcome ci permette di interpretare abbastanza la relazione tra contatti e conversion.
+Come controprova, faccio il condizionamento al contrario:
+
+```{r}
+g_poutcome_previos_y <- g_poutcome_y + facet_wrap(~previous_class)
+g_poutcome_previos_y
+```
+
+Per ogni contatto c'è una bella discriminazione della conversion, perciò la mia ipotesi era esatta. è la predispozione a convertire nella vecchia campagna che contribuisce a determinare il numero di contatti e la nuova conversion.
+
+*La conclusione è che se includeremo nel modello previous andrebbe incluso anche poutcome, come variabile di controllo? Oppure basta poutcome? Mah, alla fine soprattutto per il livello failure, il numero di contatti discrimina, quindi includerei entrambe.*.
+
+##Age e job
+
+```{r age job graph}
+g_age_class <- ggplot(bank0, aes(x = age_class)) + 
+        geom_bar()
+g_age_class_y <- ggplot(bank0, aes(x = age_class, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_age_class_y
+g_job
+g_job_y
+
+g_job_age_class <- ggplot(bank0, aes(x = job, fill = age_class)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+g_job_age_class
+#distribuzione molto sbilanciata della variabile di controllo per i due livelli studenee pensionato, probabile che age aiuti a capire la relazione tra job e conversion.
+
+g_job_age_class_y <- ggplot(bank0, aes(x = job, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~age_class) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_job_age_class_y
+```
+
+La proporzione delle fasce di età nei job mostra squilibri; ci sono molte professioni dove quasi tutti sono adulti, gli studenti poi sono quasi tutti giovani e i pensionati sono metà adulti e metà anziani. Mentre la relazione tra job e conversion ci dice che i pensionati convertono di più, controllando per l'età vediamo che convertono non se pensionati, ma se pensionati vecchi. Se vai in pensione adulto non converti. 
+
+Se ci limitiamo agli anziani, tutti i job convertono molto, ma comunque i pensionati di più. Quindi è chiaro che i pensionati crudamente convertono di più perché in essi la metà è anziana, ma comunque tra gli anziani i pensionati convertono più degli altri. Essere vecchio ti fa convertire, essere vecchio e in pensione ancora di più. Vi è una qualche interazione.
+
+Invece gli studenti convertono anche se adulti; se si osserva la conversion per fasce di età, gli adulti convertono nella media; se invece sei adulto ma studente converti più della media, perciò essere studente è legato al convertire a prescindere (in parte) dall'età.
+
+Il problema andrebbe complicato ragionando sui volumi bassi di alcuni sottogruppi.
+
+##Age e marital
+
+```{r age and marital univariate graph}
+g_age
+g_age_y
+g_age_class
+g_age_class_y
+g_marital
+g_marital_y
+```
+
+Voglio capire se i single convertono in quanto giovani, con l'età a fare da confounder o effect modifier.
+
+```{r age and marital bivariate graph}
+g_marital_age_class <- ggplot(bank0, aes(x = marital, fill = age_class)) + 
+        geom_bar(position = "fill") 
+g_marital_age_class
+#infatti la proporzione di giovani nei single è altissima, negli altri due casi lo stato maritale e l'età sono quasi indipendenti
+g_marital_age_class_y <- ggplot(bank0, aes(x = marital, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~age_class)
+g_marital_age_class_y
+```
+
+
+```{r age and marital bivariate table}
+t_marital_age_class <- bank0 %>%
+        group_by(marital, age_class) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(freq_rel = n / sum(n))
+
+t_marital_age_class_y <- bank0 %>%
+        group_by(marital, age_class) %>%
+        summarise(y_rate = mean(y == "yes")) %>%
+        select(marital, age_class, y_rate) %>%
+        spread(marital, y_rate)
+t_marital_y
+```
+
+Gli anziani single sono 61, quindi la predittività è poco significativa.
+
+La mia ipotesi di partenza è che i single convertissero in quanto giovani. L'ipotesi sembra confermata; innanzitutto la proporzione di giovani tra i single è molto più alta che negli altri due stati maritali, dove la proporzione è quasi identica (e ci può stare, e dove non è identica è perché in divorced ci sono anche i vedovi). Analizzando poi il comportamento dei tre stati per ogni fascia di età, si vede che se sei giovane converti solo se sei anche single, se sei giovane ma sposato (2060 casi) non converti. Quindi l'età non fa da confounder, ma da effect modifier, perché nella fascia giovanile la conversion dei single è potenziata rispetto a quella complessiva, per quanto il trend sia identico (minor conversion gli sposati, maggiore i single). Ma in realtà abbiamo scoperto che i giovani convertono solo se single. Gli anziani convertono assai, come è ovvio, ma il comportamento dei tre stati maritali (per quanto i numeri siano bassi) si invertono; anche qui c'è interazione! E di sicuro è dovuta allo specifico comportamento degli anziani vedovi.
+
+Nella fascia adulti i tre stati maritali convertono come per tutto il portafoglio, invece.
+
+Ma non sarà che è lo stato maritale a fare da confounding?
+
+```{r}
+g_age_class_marital_y <- ggplot(bank0, aes(x = age_class, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~marital)
+g_age_class_marital_y
+```
+
+Non abbiamo trovato confounding, ma una relazione di interazione, che ci fa dire soprattutto che i giovani che convertono sono i single. *Si potrebbe pensare di includere un effetto di interazione nel modello*.
+
+##Education and job
+
+Convertono di più i laureti. Magari non è questione di job che fai ma di educazione che hai.
+
+```{r education and job graph}
+g_education
+g_job
+g_job_y
+g_education_y
+g_education_job <- ggplot(bank0, aes(x = job, fill = education)) + 
+        geom_bar(position = "fill") 
+g_education_job
+
+g_education_job_y <- ggplot(bank0, aes(x = job, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~education) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_education_job_y
+```
+
+Vedo una interazione solo nel management, che essendo pieno di laureati marginalmente coverte di più, ma se non laureato non converte. Bisogna capire i volumi, potrebbero essere bassi. Per il resto vedo comportamenti simili alla analisi cruda, con un main effect dell'education. Tuttavia anche imprenditori e liberi professionisti hanno una buona quota di laureati, e tuttavia non convertono marginalmente e gli imprenditori nemmeno solo se laureati. Il lavoro vince sulla job, diciamo, nel senso che non gli fa esercitare nemmeno il main effect (e non so se questa è una interazione, probabilmente sì).
+
+```{r education and job table}
+t_education_job <- bank0 %>%
+        group_by(job, education) %>%
+        summarise(n = n(), y_rate = mean(y == "yes"))
+t_education_job
+
+t_education_job_y <- bank0 %>%
+        group_by(job, education) %>%
+        summarise(y_rate = mean(y == "yes")) %>%
+        select(job, education, y_rate) %>%
+        spread(job, y_rate)
+t_education_job_y
+```
+
+Non vedo grande aiuto dell'education a interpretare la relazione tra job e conversion, non includerei un effetto di interazione.
+
+##Housing and loan
+
+```{r loan and housing graph}
+g_loan
+g_housing
+g_loan_y
+g_housing_y
+g_loan_housing <- ggplot(bank0, aes(x = loan, fill = housing)) + 
+        geom_bar(position = "fill") 
+g_loan_housing
+
+g_loan_housing_y <- ggplot(bank0, aes(x = loan, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~housing) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_loan_housing_y
+```
+
+Vedo solo un main effect. Se hai il mutuo converti meno; dato che hai un prestito, se hai anche il mutuo converti meno se no converti di più. Magari il noxno accentua la conversion più del semplice main effect, ma non so se vale la pena testare una interazione per questo.
+
+
+```{r loan and housing table}
+t_loan <- bank0 %>%
+        group_by(loan) %>%
+        summarise(n = n(), y_rate = mean(y == "yes"))
+t_loan
+
+t_housing <- bank0 %>%
+        group_by(housing) %>%
+        summarise(n = n(), y_rate = mean(y == "yes"))
+t_housing
+
+t_loan_housing <- bank0 %>%
+        group_by(loan, housing) %>%
+        summarise(n = n(), y_rate = mean(y == "yes"))
+t_loan_housing
+
+t_loan_housing_y <- bank0 %>%
+        group_by(loan, housing) %>%
+        summarise(y_rate = mean(y == "yes")) %>%
+        select(loan, housing, y_rate) %>%
+        spread(loan, y_rate)
+t_loan_housing_y
+
+ggplot(t_loan_housing, aes(x = loan, y = y_rate, col = housing, group = housing)) + 
+        geom_point (size = 4) + 
+        geom_line(col= "black", linetype = 2)
+```
+
+Graficamente l'interaction effect è evidente e logicamente ha senso.
+
+##Month and day
+
+```{r month duration_class table }
+t_month_y
+g_duration_class_y
+g_month
+g_month_y
+
+t_month_duration_class <- bank0 %>%
+        group_by(month, duration_class) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(n_rel = n / sum(n)) %>%
+        select(duration_class, month, n_rel) %>%
+        spread(duration_class, n_rel, fill = 0) %>%
+        left_join(t_month_y, by = "month") %>%
+        select(-n, -n_rel, -n_rel_ind) %>%
+        arrange(desc(perc_y))
+```
+
+I mesi di maggior conversion hanno pochissimi volumi. Posto che volumi così bassi non sono significativi, è curioso che la conversion sia sempre altissima e non è mai, che so, bassissima. Noi non sappiamo il numero di chiamate svolte ogni mese dal call center, perché questa variabile conteggia l'ultima chiamata al cliente, che io immagino (per coerenza su come viene definita duration) sia quella di conversion o abbandono.
+
+Si nota tuttavia che nei mesi di maggior conversion / volumi bassi non c'è una particolare concentrazione di chiamate lunghe, come a dire: minori chiamate, maggiore qualità / lunghezza => conversion. Mi rimane solo l'ausilio grafico per smentire l'associazione tra bassi volumi di ultime chiamate e conversion causa qualità.
+
+```{r month duration_class graph}
+g_month_duration_class_y <- ggplot(bank0, aes(x = month, fill = y)) + 
+        geom_bar(position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        facet_wrap(~duration_class) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_month_duration_class_y
+```
+
+Mi sembra che a parità di durata delle chiamate l'effetto è che: se la chiamata è breve non si converte in nessun mese (main effect puro), poi il trend tra i mesi è simile per i vari livelli di duration, sempre tenendo conto del main effect.Tendo quindi a pensare che ci sia davvero una stagionalità, e forse il numero basso di chiamate nei mesi in cui la conversion è alta è dovuto al raggiungimento anticipato dei contratti da sottoscrivere. Posso confermare questa ultima tesi facendo un conteggio dei contratti per mese
+
+```{r month table 2}
+t_month_y2 <- bank0 %>%
+        group_by (month) %>%
+        summarise(y_sum = sum(y == "yes"), y_rate = mean(y == "yes")) %>%
+        arrange(desc(y_rate))
+```
+
+No, la mia ipotesi era errata.
+L'ultima cosa che vedo è la distribuzione di duration per mese. Non mi aspetto che sia sbilanciata.
+
+```{r month duration_class graph 2}
+g_month_duration_class <- ggplot(bank0, aes(x = month, fill = duration_class)) + 
+        geom_bar(position = "fill") 
+g_month_duration_class
+```
+
+Non è sbilanciata, marzo è uguale a maggio. Non c'è stata una maggiore dedizione alla telefonata nei mesi di bassi volumi. Io la variabile month la inserisco con riserva, deve esserci della stagionalità.
+
+
+```{r partizione training e test}
+#set.seed(19121984)
+
+#training_set <- bank0 %>%
+       # add_rownames() %>%
+       # sample_frac(0.8, replace = FALSE)
+
+#test_set <- bank0 %>%
+      #  add_rownames() %>%
+       # sample_frac(1, replace = FALSE) %>%
+        #anti_join(training_set, by = "rowname")
+#check ok, sono diversi
+```
+
+```{r k fold in training}
+#set.seed(123)
+#flds <- createFolds(training_set$y, k = 10, list = TRUE, returnTrain = FALSE)
+#bank_fold1 <- training_set[flds[[1]], ]
+#bank_fold2 <- training_set[flds[[2]], ]
+#bank_fold3 <- training_set[flds[[3]], ]
+#bank_fold4 <- training_set[flds[[4]], ]
+#bank_fold5 <- training_set[flds[[5]], ]
+#bank_fold6 <- training_set[flds[[6]], ]
+#bank_fold7 <- training_set[flds[[7]], ]
+#bank_fold8 <- training_set[flds[[8]], ]
+#bank_fold9 <- training_set[flds[[9]], ]
+#bank_fold10 <- training_set[flds[[10]], ]
+```
+
+
+#Validation set apprach
+
+Creo training_vsa, validation_vsa, test_vsa. Con questa partizione posso attuare il validation approach e modellare e diagnosticare si training, selezionare su validation e testare su test.
+
+
+```{r partizione training validation e test}
+set.seed(456)
+training_set_vsa <- bank0 %>%
+        add_rownames() %>%
+        sample_frac(0.6, replace = FALSE)
+nrow(training_set_vsa)
+
+test_and_val_set1 <- bank0 %>%
+        add_rownames() %>%
+        sample_frac(1, replace = FALSE) %>%
+        anti_join(training_set_vsa, by = "rowname")
+nrow(test_and_val_set1)
+#check ok, sono diversi
+
+test_set_vsa <- test_and_val_set1 %>%
+        sample_frac(0.5, replace = FALSE)
+nrow(test_set_vsa)
+
+validation_set_vsa <- test_and_val_set1 %>%
+        sample_frac(1, replace = FALSE) %>%
+        anti_join(test_set_vsa, by = "rowname")
+nrow(validation_set_vsa)
+
+validation_set_vsa[validation_set_vsa$rowname == test_set_vsa$rowname,] #check ok, tutte righe diverse
+```
+
+
+Abbiamo quindi training_set_vsa, validation_set_vsa, test_set_vsa.
+
+Da ora userò l'approccio vsa, perché mi permette di modellare molto meglio il modello testando la significatività, escludendo variabili per p.value, diagnosticando multicollinearità e bontà di adattamento.
+
+I paragoni andranno fatti tra i modelli con questo approccio.
+
+Il modello poco propenso all'overfitting e la quantità di osservazioni che non dovrebbe generare bias mi fanno preferire vsa.
+
+#Modello
+
+Selezione solo le variabili con un IV superiore a 0.02, salvo interazioni incluse (http://support.sas.com/resources/papers/proceedings13/095-2013.pdf). Ho comunque sperimentato che escludendo un predittore debole (campaign) l'AUC del validation set passava da 0.746 a 0.740.
+
+
+```{r formula glm1 vsa}
+formula_glm1 <- formula_glm1 <- y~age + job + marital + balance + housing + loan + contact + day + month + campaign + pdays + previous + age*marital + age*job + loan*housing
+```
+
+```{r glm1 vsa building}
+glm1_vsa <- glm(formula_glm1, family = "binomial", data = training_set_vsa)
+
+summary(glm1_vsa) #AIC molto basso, è normale la sovrastima delle performance, che non vuol dire overfitting.
+```
+
+#Diagnostica
+
+##Multicollinearità
+
+```{r coll}
+cd <- colldiag(model.matrix(glm1_vsa))
+print(cd)
+```
+
+Ci sono due indici (il 48 e il 49) maggiori di 30, ma nessuna vdp maggiore di 0.5 (anche se un paio ci vanno vicino, e qualche problema di multicollinearità non mi stupisce).
+
+##Bontà adattamento modello
+
+```{r HL glm1}
+hl_glm1 <- hoslem.test(training_set_vsa$y =="yes", fitted(glm1_vsa), g=10)
+hl_glm1
+```
+
+Il test, se rigettato, rigetta l'ipotesi di buon adattamento. Qui non si può rigettare. è vero che c'è il problema che il numero di gruppi non dovrebbe essere inferiore a p+1 (http://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/), e io con le variabili dummy ho molte p. Ma anche se i gruppi sono 100, il p.value è significativo, quindi il buon adattamento va rigettato.
+
+#Stima performance predittive
+
+```{r glm1 AUC on validation}
+glm1_vsa_predictions  <- predict(glm1_vsa, validation_set_vsa, type="response")
+
+AUC_glm1_vsa <- roc(validation_set_vsa$y, glm1_vsa_predictions, levels=c("no", "yes"))
+AUC_glm1_vsa$auc
+```
+
+AUC del modello sul validation set è 0.746. Con quella competerà con gli altri modelli, se la diagnostica non me lo fa cambiare.
+
+Voglio sperimentare anche la AUCPR, che forse è miglior indicatore per classi molto sbilanciate (http://stats.stackexchange.com/questions/7207/roc-vs-precision-and-recall-curves)
+
+
+```{r glm1 AUCPR on validation}
+AUCPR_glm1_vsa <- pr.curve(glm1_vsa_predictions, weights.class0 = validation_set_vsa$y == "yes", curve=T)
+AUCPR_glm1_vsa
+plot(AUCPR_glm1_vsa)
+```
+
+
+
+Prima stepwise selection su tutto il training
+
+```{r backward e forward}
+glm2_beforebackstep_training <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + previous, family = "binomial", data = training_set_vsa)
+
+glm2_backstep_selection <- stepAIC(object = glm2_beforebackstep_training, direction = "backward", scope = c(upper = ~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous, lower = ~1))
+
+glm2_backstep_selection$anova
+
+glm2_beforeforwardstep_training <- glm(y~1, family = "binomial", data = training_set_vsa)
+
+glm2_forwardstep_selection <- stepAIC(object = glm2_beforeforwardstep_training, direction = "forward", scope = c(upper = ~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous, lower = ~1))
+
+glm2_forwardstep_selection$anova
+```
+
+Allora, la backward come final model presenta y ~ age + job + marital + education + balance + housing + loan + 
+    contact + pdays + month + campaign + previous e un AIC di 17048.57.
+    
+La forward  y ~ month + contact + housing + campaign + loan + job + previous + 
+    education + marital + pdays + balance + age con AIC di 17048.57. Identico!
+
+
+#Diagnostica
+
+```{r glm2 formula }
+step_formula <- y ~ age + job + marital + education + balance + housing + loan + contact + pdays + month + campaign + previous
+
+glm2_vsa <- glm(step_formula, family ="binomial", data = training_set_vsa)
+
+```
+
+##Multicollinearità
+
+```{r coll glm2 }
+cd <- colldiag(model.matrix(glm2_vsa))
+print(cd)
+```
+
+Nessun indice, eccetto intercetta, supera 30. Non ci sono problemi di multicollinearità.
+
+##Bontà adattamento modello
+
+```{r HL glm2}
+hl_glm2 <- hoslem.test(training_set_vsa$y =="yes", fitted(glm2_vsa), g=100)
+hl_glm2
+```
+
+Anche qua test rigettato, l'ipotesi nulla di buon adattamento va rigettata. Anche con 100 gruppi il p.value è bassissimo.
+
+#Stima performance predittive
+
+Bene, ora vediamo l'AUC sul validation set
+
+```{r glm2 AUC on validation }
+glm2_vsa_predictions  <- predict(glm2_vsa, validation_set_vsa, type="response")
+
+AUC_glm2_vsa <- roc(validation_set_vsa$y, glm2_vsa_predictions, levels=c("no", "yes"))
+AUC_glm2_vsa$auc
+```
+
+Però. glm2 ha AUC di 0.7463 contro 0.746 di glm1. Per ora vince la step contro di me.
+
+Vediamo la AUCPR
+
+```{r glm2 AUCPR on validation}
+AUCPR_glm2_vsa <- pr.curve(glm2_vsa_predictions, weights.class0 = validation_set_vsa$y == "yes", curve=T)
+AUCPR_glm2_vsa
+plot(AUCPR_glm2_vsa)
+```
+
+
+Modello simile a glm1, ma usando i fattori invece delle variabili quantitative quando possibile
+
+```{r formula glm3 vsa}
+formula_glm3 <- y ~ age_class + job + marital + balance_class + housing + loan + contact + day + month + campaign_class + pdays_class + age_class*marital + age_class*job + loan*housing
+```
+
+```{r glm3 vsa building}
+glm3_vsa <- glm(formula_glm3, family = "binomial", data = training_set_vsa)
+
+summary(glm3_vsa) #AIC molto basso, è normale la sovrastima delle performance, che non vuol dire overfitting.
+```
+
+AIC più bassa sinora.
+
+#Diagnostica
+
+##Multicollinearità
+
+```{r glm 3 coll}
+matrix_glm3 <- model.matrix(glm3_vsa)
+matrix_glm3 <- matrix_glm3[,colSums(matrix_glm3 != 0) != 0]
+
+cd_glm3 <- colldiag(matrix_glm3)
+print(cd_glm3)
+str(cd_glm3)
+cd_glm3$condindx
+cd_glm3$pi[84,]
+```
+
+Pdays  e previous_class danno un problema di multicollinearità. Tolgo previous class  eil problema non c'è più.
+
+##Bontà adattamento modello
+
+```{r HL glm3}
+hl_glm3 <- hoslem.test(training_set_vsa$y =="yes", fitted(glm3_vsa), g=10)
+hl_glm3
+```
+
+Il test, se rigettato, rigetta l'ipotesi di buon adattamento. Qui non si può rigettare. è vero che c'è il problema che il numero di gruppi non dovrebbe essere inferiore a p+1 (http://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/), e io con le variabili dummy ho molte p. Ma anche se i gruppi sono 100, il p.value è significativo, quindi il buon adattamento va rigettato.
+
+#Stima performance predittive
+
+```{r glm3 AUC on validation}
+glm3_vsa_predictions  <- predict(glm3_vsa, validation_set_vsa, type="response")
+
+AUC_glm3_vsa <- roc(validation_set_vsa$y, glm3_vsa_predictions, levels=c("no", "yes"))
+AUC_glm3_vsa$auc
+```
+
+AUC del modello sul validation set è 0.755 (stabile anche dopo aver tolo previous per multicollinearità). Con quella competerà con gli altri modelli, se la diagnostica non me lo fa cambiare.
+
+
+Vediamo la AUCPR
+
+```{r glm3 AUCPR on validation 1}
+AUCPR_glm3_vsa <- pr.curve(glm3_vsa_predictions, weights.class0 = validation_set_vsa$y == "yes", curve=T)
+AUCPR_glm3_vsa
+plot(AUCPR_glm3_vsa)
+```
+
+
+Modello simile a glm3, ma uso i p.value per escludere variabili se possibile
+
+```{r formula glm4 vsa}
+formula_glm4_1 <- y ~ age_class + job + marital + balance_class + housing + loan + contact + day + month + campaign_class + pdays_class + age_class*marital + age_class*job + loan*housing
+```
+
+```{r glm4 vsa building}
+glm4_1_vsa <- glm(formula_glm4_1, family = "binomial", data = training_set_vsa)
+
+summary(glm4_1_vsa) #AIC molto basso, è normale la sovrastima delle performance, che non vuol dire overfitting.
+```
+
+Tolgo interazion age*marital age*job e job: Raiggiungo previous_class, magari ora non ci sarà collinearità.
+
+```{r formula glm4 2 vsa}
+formula_glm4_2 <- y ~ age_class + marital + balance_class + housing + loan + contact + day + month + campaign_class + pdays_class + loan*housing
+```
+
+```{r glm4 second building}
+glm4_2_vsa <- glm(formula_glm4_2, family = "binomial", data = training_set_vsa)
+summary(glm4_2_vsa)
+anova(glm4_1_vsa, glm4_2_vsa)
+```
+
+
+#Multicollinearità
+
+```{r glm 4 coll}
+matrix_glm4_2 <- model.matrix(glm4_2_vsa)
+matrix_glm4_2 <- matrix_glm4_2[,colSums(matrix_glm4_2 != 0) != 0]
+
+cd_glm4_2 <- colldiag(matrix_glm4_2)
+print(cd_glm4_2)
+str(cd_glm4_2)
+cd_glm4_2$condindx
+cd_glm4_2$pi[48,]
+```
+
+Previous continua a dare problemi di multicollinearità. Lo ritolgo all'origine.
+
+
+##Bontà adattamento modello
+
+```{r HL glm4_2}
+hl_glm4_2 <- hoslem.test(training_set_vsa$y =="yes", fitted(glm4_2_vsa), g=10)
+hl_glm4_2
+```
+
+Nada.
+
+##Stima delle performance predittive
+
+```{r glm4 AUC on validation}
+glm4_2_vsa_predictions  <- predict(glm4_2_vsa, validation_set_vsa, type="response")
+
+AUC_glm4_2_vsa <- roc(validation_set_vsa$y, glm4_2_vsa_predictions, levels=c("no", "yes"))
+AUC_glm4_2_vsa$auc
+plot(AUC_glm4_2_vsa, legacy.axes=TRUE)
+```
+
+AUC di 0.7556. Senza togliere le variabili con basso p.value eravamo a 0.755, praticamente performance identiche con stessi problemi di multicollinearità Giusto per scrupolo voglio vedere se gli errori standard sono inferiori nel secondo caso (anche se solo il principio della parsimonia basta a giustificare il secondo modello).
+
+```{r}
+a <- tidy(glm3_vsa)
+b <- tidy(glm4_2_vsa)
+glm_comp_3_and_4_2 <- a %>%
+        inner_join(b, by = "term") %>%
+        select(term, SE_glm3 = std.error.x, SE_glm4_2 =  std.error.y) %>%
+        mutate(comp_SE = SE_glm4_2 - SE_glm3) %>%
+        arrange(comp_SE)
+```
+
+Quasi tutti inferiori, anche se di poco. Mi domando se un tale misero vantaggio di SE e di AUC mi debba indurre a escludere delle variabili. Preferire glm3 o glm4? Mah. Considera però che glm3 ha il problema del rank e che in glm4 ho valutato i p-value senza la correzione di bonferroni.
+
+
+```{r glm3 AUCPR on validation}
+AUCPR_glm4_2_vsa <- pr.curve(glm4_2_vsa_predictions, weights.class0 = validation_set_vsa$y == "yes", curve=T)
+AUCPR_glm4_2_vsa
+plot(AUCPR_glm4_2_vsa)
+```
+
+```{r glm5 poutcome}
+formula_glm5_1 <- y ~ poutcome
+glm5_1_vsa <- glm(formula_glm5_1, family = "binomial", data = training_set_vsa)
+summary(glm5_1_vsa)
+```
+
+Alpha = 0.05 / ? Non si sa. Non ha senso fare la forward. Dovresti assumere un numero di variabili che incliderai, ma magari escludi qualcosa che andrebbe messo.
+
+
+```{r glm5 poutcome month}
+formula_glm5_2 <- y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + previous
+glm5_2_vsa <- glm(formula_glm5_2, family = "binomial", data = training_set_vsa)
+summary(glm5_2_vsa)
+glm5_2_vsa_table <- tidy(glm5_2_vsa)
+da_escludere <- glm5_2_vsa_table %>%
+        filter(p.value > 0.05/nrow(a))
+```
+
+Praticamente tutto. è evidente che il test perde di potenza, oppure che i test statistici per questa analisi tendono a considerare il modello non corretto (vedi anche HL). Bisogna rifarsi perciò alla AUC. La step tramite p.value è abortita.
+
+
+
+
+```{r}
+# The train and test set are loaded into your workspace.
+
+# Set random seed. Don't remove this line
+set.seed(1)
+
+# Load the rpart, rattle, rpart.plot and RColorBrewer package
+library("rpart")
+library("rpart.plot")
+library("RColorBrewer")
+library("rattle")
+
+# Build a tree model: tree
+tree <- rpart(y ~ age + job + marital + balance + housing + loan + contact + day + month + campaign + pdays + previous, data = training_set_vsa, method = "class", control=rpart.control(minsplit=5, cp=0.001))
+
+# Draw the decision tree
+pred <- predict(tree, validation_set_vsa, type = "class")
+conf <- table(validation_set_vsa$y, pred)
+conf
+```
+
+
+#Auroc test
+
+```{r AUC test glm3}
+test_set_vsa$glm3_vsa_predictions_test  <- predict(glm3_vsa, test_set_vsa, type="response")
+AUC_glm3_vsa_test <- roc(test_set_vsa$y, test_set_vsa$glm3_vsa_predictions_test, levels=c("no", "yes"))
+AUC_glm3_vsa_test$auc
+```
+
+#Aucpr test
+
+```{r AUCPR glm3}
+AUCPR_glm3_vsa <- pr.curve(test_set_vsa$glm3_vsa_predictions_test, weights.class0 = test_set_vsa$y == "yes", curve=T)
+AUCPR_glm3_vsa
+```
+
+#Grafici
+
+```{r plot of ROC AUCPR and prob-cutoff and prob_class }
+plot(AUC_glm3_vsa_test, legacy.axes = TRUE)
+
+plot(AUCPR_glm3_vsa)
+
+g_estim_prob_class <- ggplot(data = test_set_vsa, aes(x = glm3_vsa_predictions_test, col = y)) +
+        geom_density()
+g_estim_prob_class
+
+#construisco un dataframe per il plot sensitivuty probability vs cutoff. vedi https://cran.r-project.org/web/packages/ROCR/ROCR.pdf
+
+prediction_test_obj <- prediction(predictions = test_set_vsa$glm3_vsa_predictions_test, labels = test_set_vsa$y)
+tpr_obj <-  performance(prediction_test_obj, measure = "tpr")
+fpr_obj <-  performance(prediction_test_obj, measure = "spec")
+ppv_obj <-  performance(prediction_test_obj, measure = "prec") 
+
+sens_spec_cutoff_df_wide <- data.frame (cutoff = as.numeric( unlist ( tpr_obj@x.values) ), sensitivity = as.numeric( unlist ( tpr_obj@y.values) ), specificity = as.numeric( unlist ( fpr_obj@y.values) ), ppv = as.numeric( unlist (ppv_obj@y.values) ))
+
+sens_spec_cutoff_df_tidy <- sens_spec_cutoff_df_wide %>%
+        gather(key = type_indicator, value_indicator, sensitivity:ppv)
+
+g_sens_spec_cutoff <- ggplot(sens_spec_cutoff_df_tidy, aes(x = cutoff, y = value_indicator, col = type_indicator)) +
+        geom_line() + 
+        scale_x_continuous(breaks = seq(0.01, 1, 0.02)) +
+        scale_y_continuous(breaks = seq(0, 1, 0.05)) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_sens_spec_cutoff#eccellente!
+```
+
+Con questo grafico, `g_sens_spec_cutoff``, posso scegliere la soglia di cutoff che desidero e sapere tpr, fpr, ppv all'istante.
+
+#Decisione sulla soglia
+
+```{r cutoff decision}
+sens_spec_cutoff_df_wide %>%
+        filter(sensitivity > 0.47, sensitivity < 0.53)
+
+#Quando cutoff = 0.1758297 allora:
+
+sens_spec_cutoff_df_wide %>%
+        filter(cutoff > 0.1758, cutoff < 0.1759)
+#ho un tpr del 50%, un tnr del 88% e un ppv del 36%
+```
+
+La mia soglia è 0.1758
+
+#Confusion matrix
+```{r confusion matrix glm3}
+#usa prediction_test_obj di rocr, vedi sopra e https://cran.r-project.org/web/packages/ROCR/ROCR.pdf
+test_set_vsa$yhat <- factor(as.numeric(test_set_vsa$glm3_vsa_predictions_test > 0.1758))
+test_set_vsa$yact <- factor(as.numeric(test_set_vsa$y == "yes"))
+conf_matrix <- confusionMatrix(test_set_vsa$yhat, test_set_vsa$yact, positive ="1")
+conf_matrix
+```
+
+
+#Diagnostic likelihood ratio
+
+Non so la prevalence se va calcolata su tutto il dataset o solo sul training. Io direi solo sul training, perché nella CV è il campione che ho a disposizione per qualunque stima. peraltro è identica a quella di tutto il dataset.
+
+```{r DLR+ glm3}
+ppv_def <-sens_spec_cutoff_df_wide$ppv[sens_spec_cutoff_df_wide$cutoff > 0.1758 & sens_spec_cutoff_df_wide$cutoff < 0.1759]
+prevalence <- mean(training_set_vsa$y == "yes")
+DLRp <- ( (ppv_def/(1-ppv_def)) / (prevalence/(1-prevalence)) )
+DLRp  #sopra 4, buono.
+```
+
+
+#Lift chart cumulato
+
+```{r AULIFT glm3}
+lift_df <- data.frame(yact = test_set_vsa$yact, y_pred_prob = test_set_vsa$glm3_vsa_predictions_test)
+lift_df_sum <- lift_df %>%
+        arrange(y_pred_prob) %>%
+        mutate(groups = ntile(y_pred_prob, 10)) %>%
+        group_by(groups) %>%
+        summarise(n_clienti = n(), n_y = sum(yact == "1")) %>%
+        arrange(desc(groups)) %>%
+        mutate(perc_clienti = n_clienti / sum(n_clienti), perc_clienti_positivi = n_y / sum(n_y), perc_cum_clienti_pos_mod               = cumsum(perc_clienti_positivi), perc_cum_clienti = cumsum(perc_clienti), perc_cum_clienti_pos_exp = perc_cum_clienti) %>%
+        select(groups, perc_cum_clienti, perc_cum_clienti_pos_mod, perc_cum_clienti_pos_exp) %>%
+        gather(key = type_indicator, value_indicator, perc_cum_clienti_pos_mod:perc_cum_clienti_pos_exp) %>%
+        ggplot(aes(x = perc_cum_clienti, y = value_indicator, col = type_indicator)) + 
+        geom_point (size = 3) + 
+        geom_line() +
+        scale_x_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        geom_vline(xintercept = 0.17)
+lift_df_sum
+```
+
