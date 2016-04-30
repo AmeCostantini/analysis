@@ -4,13 +4,24 @@ author: "Americo"
 date: "29 aprile 2016"
 output: html_document
 ---
+
+##Introduzione
+
+Questo capitolo tratta lo svolgimento di una analisi dati relativa al **direct marketing** bancario, utilizzando un dataset disponibile sul web a questo indirizzo: http://archive.ics.uci.edu/ml/datasets/Bank+Marketing. Questo dataset contiene le informazioni raccolte da una banca portoghese che dal 2008 al 2013 ha effettuato chiamate in outbound a un campione del suo portafoglio per proporre la sottoscrizione di un ulteriore prodotto, un deposito a termine. Avendo a disposizione alcune informazioni sui clienti e sapendo quali hanno sottoscritto e quali no, l'obiettivo dell'analisi sarà quello di costruire un modello di regressione logistica che sia in grado di discriminare i clienti, tra quelli mai chiamati, che sottoscriveranno il prodotto se contattati da quelli che non lo soottoscriveranno. Una tale analisi predittiva avrebbe enormi benefici in termini di efficacia dell'attività di vendita: senza modelli infatti ogni 100 clienti contattati si avrà un **conversion rate** identico, che sarà molto prossimo a quello del campione analizzato (11% circa); con un modello a disposizione invece si potrà individuare un segmento di clienti entro la quale la **conversion** sarà maggiore, e si potranno collocare più prodotti a parità di chiamate.
+
+#Metodologia
+
+
+
+##Descrizione del dataset
+
 #Caricamento package
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(cache=TRUE)
 ```
 
-```{r packages, message=FALSE}
+```{r packages, message=FALSE, warning=FALSE}
 require(gains)
 require(PRROC)
 require(broom)
@@ -33,7 +44,7 @@ select <- dplyr::select
 
 #Set up cartelle e creazione dataset
 
-```{r directory e dataset}
+```{r directory e dataset, results='hide'}
 getwd()
 setwd("/Users/Americo/Documents/Education/Unitelma/tesi/data_analysis/dataset")
 bank0_df <- read.csv(file = "bank_full.csv", sep = ";")
@@ -55,7 +66,7 @@ bank0_sm <- read.csv(file = "bank.csv", sep = ";")
 *    6 - balance: average yearly balance, in euros (numeric) 
 *    7 - housing: has housing loan? (binary: "yes","no")
 *    8 - loan: has personal loan? (binary: "yes","no")
-*    # related with the last contact of the current campaign:
+*    related with the last contact of the current campaign:
 *    9 - contact: contact communication type (categorical: "unknown","telephone","cellular") 
 *   10 - day: last contact day of the month (numeric)
 *   11 - month: last contact month of year (categorical: "jan", "feb", "mar", ..., "nov", "dec")
@@ -95,7 +106,7 @@ summary(bank0)
 
 ##Age
 
-```{r age graph}
+```{r age graph, fig.width=16, fig.height=7}
 g_age <- ggplot(bank0, aes(x = factor(age))) + geom_bar(col = "white")
 g_age
 g_age_y <- ggplot(bank0, aes(x = factor(age), fill = y)) + 
