@@ -5,17 +5,15 @@ date: "29 aprile 2016"
 output: html_document
 ---
 
-##Introduzione
+#Introduzione
 
-Questo capitolo tratta lo svolgimento di una analisi dati relativa al **direct marketing** bancario, utilizzando un dataset disponibile sul web a questo indirizzo: http://archive.ics.uci.edu/ml/datasets/Bank+Marketing. Questo dataset contiene le informazioni raccolte da una banca portoghese che dal 2008 al 2013 ha effettuato chiamate in outbound a un campione del suo portafoglio per proporre la sottoscrizione di un ulteriore prodotto, un deposito a termine. Avendo a disposizione alcune informazioni sui clienti e sapendo quali hanno sottoscritto e quali no, l'obiettivo dell'analisi sarà quello di costruire un modello di regressione logistica che sia in grado di discriminare i clienti, tra quelli mai chiamati, che sottoscriveranno il prodotto se contattati da quelli che non lo soottoscriveranno. Una tale analisi predittiva avrebbe enormi benefici in termini di efficacia dell'attività di vendita: senza modelli infatti ogni 100 clienti contattati si avrà un **conversion rate** identico, che sarà molto prossimo a quello del campione analizzato (11% circa); con un modello a disposizione invece si potrà individuare un segmento di clienti entro la quale la **conversion** sarà maggiore, e si potranno collocare più prodotti a parità di chiamate.
+Questo capitolo tratta lo svolgimento di una analisi dati relativa al **direct marketing** bancario, utilizzando un dataset disponibile sul web a questo indirizzo: http://archive.ics.uci.edu/ml/datasets/Bank+Marketing. Questo dataset contiene le informazioni raccolte da una banca portoghese che dal 2008 al 2013 ha effettuato chiamate in outbound a un campione del suo portafoglio per proporre la sottoscrizione di un ulteriore prodotto, un deposito a termine. Avendo a disposizione alcune informazioni sui clienti e sapendo quali hanno sottoscritto e quali no, l'obiettivo dell'analisi sarà quello di costruire un modello di regressione logistica che sia in grado di discriminare i clienti, tra quelli mai chiamati, che sottoscriveranno il prodotto se contattati da quelli che non lo soottoscriveranno. Una tale analisi predittiva avrebbe enormi benefici in termini di efficacia dell'attività di vendita: senza il supporto di modelli infatti ogni n clienti contattati si avrà una penetrazione del prodotto identica, che sarà molto prossimo a quello del campione analizzato (11,7% circa); con un modello a disposizione invece si potrà individuare un segmento di clienti entro la quale la **penetrazione** sarà maggiore, e si potranno collocare più prodotti a parità di chiamate.
 
 #Metodologia
 
+##Strumenti
 
-
-##Descrizione del dataset
-
-#Caricamento package
+Questa analisi viene svolta utilizzando il linguaggio di analisi statistica R, tramite il modulo di literate statical programming **R markdown**, che permette il rispetto dei principi della ricerca riproducibile. Per ogni risultato dell'analisi viene riportato il codice che lo ha generato. Di seguito i package utilizzati per l'analisi:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(cache=TRUE)
@@ -42,7 +40,13 @@ require(tidyr)
 select <- dplyr::select
 ```
 
-#Set up cartelle e creazione dataset
+##Approccio statistico
+
+I modelli che verranno testati rientrano tutti nella famiglia della regressione logistica, di cui si è trattato nel capitolo primo. L'approccio si concretizzerà in una prima fase di **exploratory data analysis**, soprattutto in formato grafico, seguita da un confronto tra diverse ipotesi di modello guidate dalla prima fase. Per ogni variabile verrà eseguita una analisi univariata e una della sua relazione con la variabile target `y`, inoltre in alcuni casi verrà approfondita la relazione trivariata tra `y`e due variabili indipendenti.
+
+#Analisi esplorativa
+
+##Caricamento del dataset
 
 ```{r directory e dataset, results='hide'}
 getwd()
@@ -52,32 +56,39 @@ bank0 <- tbl_df(read.csv(file = "bank_full.csv", sep = ";"))
 bank0_sm <- read.csv(file = "bank.csv", sep = ";")
 ```
 
-#Informazioni sul dataset
+##Informazioni sul dataset
 
-##Input variables
+```{r dim dataset}
+dim(bank0)
+```
 
-###bank client data
- 
-* 1 - age (numeric)
-*    2 - job : type of job (categorical: "admin.","unknown","unemployed","management","housemaid","entrepreneur","student", "blue-collar","self-employed","retired","technician","services") 
-*    3 - marital : marital status (categorical: "married","divorced","single"; note: "divorced" means divorced or widowed)
-*    4 - education (categorical: "unknown","secondary","primary","tertiary")
-*    5 - default: has credit in default? (binary: "yes","no")
-*    6 - balance: average yearly balance, in euros (numeric) 
-*    7 - housing: has housing loan? (binary: "yes","no")
-*    8 - loan: has personal loan? (binary: "yes","no")
-*    related with the last contact of the current campaign:
-*    9 - contact: contact communication type (categorical: "unknown","telephone","cellular") 
-*   10 - day: last contact day of the month (numeric)
-*   11 - month: last contact month of year (categorical: "jan", "feb", "mar", ..., "nov", "dec")
-*   12 - duration: last contact duration, in seconds (numeric)
+Il dataset è composto da circa 45000 osservazioni e da 17 variabili. Vediamo meglio quali sono le variabili:
 
-###Other attributes:
+```{r dim dataset}
+str(bank0)
+```
 
-*   13 - campaign: number of contacts performed during this campaign and for this client (numeric, includes last contact)
-*   14 - pdays: number of days that passed by after the client was last contacted from a previous campaign (numeric, -1 means client was not previously contacted)
-*   15 - previous: number of contacts performed before this campaign and for this client (numeric)
-*   16 - poutcome: outcome of the previous marketing campaign (categorical: "unknown","other","failure","success")
+Al link sopra riportato vi è la descrizione delle 17 variabili presenti nel dataset, che noi approfondiremo singolarmente nella nostra analisi. Per ora basti la seguente sintesi:
+
+* *Variabili legate al profilo del cliente*
+* age: età del cliente
+* job: professione svolta dal cliente
+* marital : stato coniugale del cliente
+* education: titolo di studio del cliente
+* default: presenza di crediti in default
+* balance: saldo medio annuale del conto
+* housing: presenza di mutuo per la casa
+* loan: presenza di prestiti
+* *Variabili legate all'ultimo contatto dell'attuale campagna di marketing*
+* contact: modalità di comunicazione per l'ultimo contatto avvenuto
+* day: giorno del mese dell'ultimo contatto avvenuto
+* month: mese dell'ultimo contatto avvenuto
+* duration: durata (in secondi) dell'ultimo contatto avvenuto
+* *Variabili legate all'attuale o a precedente campagna di marketing*
+* campaign: totale di contatti avvenuti durante l'attuale campagna di marketing per ogni cliente
+* pdays: numero di giorni trascorsi prima che il cliente fosse contattato per questa campagna dopo la fine della campagna precedente
+* previous: numerodi contatti avvenuti prima di questa campagna
+* poutcome: esito della precedente campagna di marketing
 
 ##Output variable (desired target)
 
@@ -92,10 +103,7 @@ None
 
 ##Esplorazione dimensioni
 
-```{r exp dataset}
-str(bank0)
-dim(bank0)
-```
+
 
 Non ci sono variabili numeriche, solo interi e fattori. Da capire se servirà qualche trasformazione
 #Esplorazione tabellare distribuzioni univariate
@@ -850,7 +858,7 @@ Duration class è la più sospetta, troppo predittiva. Può darsi che i miei sos
 
 #GGpairs
 
-```{r}
+```{r ggpairs, fig.width=20, fig.height=20}
 #bank0_ggpairs <- ggpairs(bank0_sm) non è venuto bene
 ```
 
@@ -1651,3 +1659,20 @@ lift_df_sum <- lift_df %>%
 lift_df_sum
 ```
 
+#Conversion per decili
+
+```{r conversion per decili glm3}
+g_conversion_decili <- lift_df %>%
+        arrange(y_pred_prob) %>%
+        mutate(groups = ntile(y_pred_prob, 10)) %>%
+        group_by(groups) %>%
+        summarise(n_clienti = n(), n_y = sum(yact == "1")) %>%
+        arrange(desc(groups)) %>%
+        mutate(perc_clienti = n_clienti / sum(n_clienti), perc_cum_clienti = cumsum(perc_clienti), conversion = n_y / n_clienti) %>%
+        ggplot(aes(x = groups, y = conversion)) + 
+        geom_bar(stat = "identity", col = "blue", fill = "pink") +
+        scale_x_continuous(breaks = seq(1, 10, 1)) +
+        scale_y_continuous(breaks = seq(0, 1, 0.05)) +
+        geom_hline(yintercept = mean(bank0$y == "yes"), col = "blue", linetype = 2)
+g_conversion_decili
+```
