@@ -38,6 +38,7 @@ require(ggplot2)
 require(dplyr)
 require(tidyr)
 require(knitr)
+require("e1071")
 select <- dplyr::select
 ```
 
@@ -225,8 +226,6 @@ g_job  <- ggplot(bank0, aes(x = job)) +
 g_job
 ```
 
-**commento sulla distribuzione**
-
 Vediamo adesso come, all'interno dei vari livelli della professione, si distribuiscono i sottoscrittori:
 
 ```{r job_y table and graph}
@@ -243,13 +242,14 @@ g_job_y  <- ggplot(bank0, aes(x = job, fill = y)) +
         geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
         ggtitle("penetrazione per job") +
         ylab("tasso sottoscrizioni") +
-        scale_y_continuous(breaks = seq(0, 1, 0.1))
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_job_y
 ```
 
-**commento sulla distribuzione**
+Le professioni con il maggior tasso di sottoscrittori sono le meno frequenti, studenti e pensionati. Sarà interessante vedere - e lo faremo nella sezione delle analisi trivariate - se c'è un legame da età e professione tale per cui una delle due variabili può spiegare parzialmente la relazione con la sottoscrizione. 
 
-Non mi spiego perché i disoccupati tendano a fare più depositi. Forse in questa categoria ci sono giovani a cui il deposito viene regalato dai genitori.
+Non facile da interpretare invece il dato sui disoccupati: perché mai chi non ha reddito dovrebbe tendere più della media a sottoscrivere depositi a lungo termine? Forse vi rientrano giovani non categorizzati come studenti il cui deposito viene finanziato dai genitori. Anche qui l'analisi trivariata ci potrà svelare se c'è un legame.
 
 Da Ultimo calcoliamo l'information value della variabile `job`:
 
@@ -262,32 +262,54 @@ job_woe <- bank0 %>%
         select (starts_with("perc"))
 job_woe$woe <- log(job_woe$perc_no / job_woe$perc_y)
 job_IV <- sum((job_woe$perc_no - job_woe$perc_y) * job_woe$woe)
+job_IV
 ```
 
 Anche `job` ha un potere predittivo di media entità.
 
 ##Marital
 
-```{r marital graph}
+La variabile descrive lo stato coniugale. Dal dizionario dati sappiamo che il valore "divorced" include anche i vedovi.
+
+```{r marital table and graph}
+t_marital <- bank0 %>%
+        group_by(marital) %>%
+        summarise(frequenza = n()) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        arrange(desc(frequenza))
+kable(t_marital, digits = 4, format = "markdown")
+
 g_marital  <- ggplot(bank0, aes(x = marital)) +
-        geom_bar()
+        geom_bar() +
+        ggtitle("distribuzione per marital") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_marital
+```
+
+
+```{r marital_y table and graph}
+t_marital_y <- bank0 %>%
+        group_by (marital) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(marital, frequenza, frequenza_relativa, tasso_sottoscrizioni) %>%
+        arrange(desc(tasso_sottoscrizioni))
+kable(t_marital_y, digits = 4, format = "markdown")
+
 g_marital_y  <- ggplot(bank0, aes(x = marital, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per marital") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_marital_y
 ```
 
-Non me lo aspettavo. Pochissima predittività della variabile
+I single tendono a sottoscrivere un po' di più. Anche qui andrà indagata la relazione con l'età (la maggior parte dei single sono giovani e quindi per questo i single sottoscrivono di più?) e la professione (specialmente studentesca).
 
-```{r marital table}
-t_marital_y <- bank0 %>%
-        group_by (marital) %>%
-        summarise (n = n(), perc_y = mean(y=="yes"))
-t_marital_y
-```
-
-I single tendono a farne un po' di più. Anche qui, confounding dell'età giovanile?
+L'information value di `marital`:
 
 ```{r marital IV}
 marital_woe <- bank0 %>%
@@ -298,29 +320,53 @@ marital_woe <- bank0 %>%
         select (starts_with("perc"))
 marital_woe$woe <- log(marital_woe$perc_no / marital_woe$perc_y)
 marital_IV <- sum((marital_woe$perc_no - marital_woe$perc_y) * marital_woe$woe)
+marital_IV
 ```
+
+Ha una predittività molto debole.
 
 ##Education
 
-```{r education graph}
+```{r education graph and table}
+t_education  <- bank0 %>%
+        group_by(education) %>%
+        summarise(frequenza = n()) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        arrange(desc(frequenza))
+kable(t_education, digits = 4, format = "markdown")
+
 g_education  <- ggplot(bank0, aes(x = education)) +
-        geom_bar()
+        geom_bar() +
+        ggtitle("distribuzione per education") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_education
+```
+
+Analizziamo come la penetrazione si distribuisce tra i titoli di studio:
+
+```{r education_y graph and table}
+t_education_y <- bank0 %>%
+        group_by (education) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(education, frequenza, frequenza_relativa, tasso_sottoscrizioni) %>%
+        arrange(desc(tasso_sottoscrizioni))
+kable(t_education_y, digits = 4, format = "markdown")
+
 g_education_y  <- ggplot(bank0, aes(x = education, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per education") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_education_y
 ```
 
-Sembra che a maggior livello culturale segua maggiore propensione a sottoscrivere depositi. Da capire se qui gli studenti fanno confounding, anche se ci credo meno. Penso (sarà da verificare con qualche analisi trivariata) che anche tra i trentacinquenni ci siano molti laureati.
+Sembra che (ignorando il livello "unknown") a maggior livello culturale segua maggiore propensione a sottoscrivere depositi, e questa appare come una informazione aggiuntiva rispetto a quanto abbiamo scoperto sinora. Anche qui dovremo capire se l'educazione terziaria è maggiormente presente negli under 30, che per condizioni socio-economiche mutevoli hanno studiato in proporzione di più degli adulti.
 
-
-```{r education table}
-t_education_y <- bank0 %>%
-        group_by (education) %>%
-        summarise (n = n(), perc_y = mean(y=="yes"))
-t_education_y
-```
+L'information value di `èducation`:
 
 ```{r education IV}
 education_woe <- bank0 %>%
@@ -331,29 +377,55 @@ education_woe <- bank0 %>%
         select (starts_with("perc"))
 education_woe$woe <- log(education_woe$perc_no / education_woe$perc_y)
 education_IV <- sum((education_woe$perc_no - education_woe$perc_y) * education_woe$woe)
+education_IV
 ```
+
+Predittività debole ma non assente.
 
 ##Default
 
-```{r default graph}
+Variabile dicotomica che quando assume valore `r 1` indica la presenza di crediti in defualt.
+
+```{r default table and graph}
+t_default  <- bank0 %>%
+        group_by(default) %>%
+        summarise(frequenza = n()) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        arrange(desc(frequenza))
+kable(t_default, digits = 4, format = "markdown")
+
 g_default  <- ggplot(bank0, aes(x = default)) +
-        geom_bar()
+        geom_bar() +
+        ggtitle("distribuzione per default") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_default
+```
+
+Pochissimi in default, forse troppo pochi per trovare significatività in questa variabile.
+
+```{r default_y graph and  table}
+t_default_y <- bank0 %>%
+        group_by (default) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(default, frequenza, frequenza_relativa, tasso_sottoscrizioni) %>%
+        arrange(desc(tasso_sottoscrizioni))
+kable(t_default_y, digits = 4, format = "markdown")
+
 g_default_y  <- ggplot(bank0, aes(x = default, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per default") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_default_y
 ```
 
-Pochissimi in default, i no si comportanto come il campione, ma d'altronde sono pressoché tutto il campione. Certo il sì è un po' predittivo, ma poca numerosità.
+I clienti non in default si comportano, in termini di sottoscrizioni, assolutamente nella media, ma d'altronde rappresentano pressoché tutto il campione. Il `r t_default[2,3]` che è in default sottoscrive (prevedibilmente) molto meno.
 
-
-```{r default table}
-t_default_y <- bank0 %>%
-        group_by (default) %>%
-        summarise (n = n(), perc_y = mean(y=="yes"))
-t_default_y
-```
+Passiamo all'information value
 
 ```{r default IV}
 default_woe <- bank0 %>%
@@ -364,7 +436,12 @@ default_woe <- bank0 %>%
         select (starts_with("perc"))
 default_woe$woe <- log(default_woe$perc_no / default_woe$perc_y)
 default_IV <- sum((default_woe$perc_no - default_woe$perc_y) * default_woe$woe)
+default_IV
 ```
+
+Predittività assente.
+
+**ripartire da qui**
 
 ##Balance
 
