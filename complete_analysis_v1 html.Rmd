@@ -37,6 +37,7 @@ library(woe)
 require(ggplot2)
 require(dplyr)
 require(tidyr)
+require(knitr)
 select <- dplyr::select
 ```
 
@@ -56,6 +57,8 @@ bank0 <- tbl_df(read.csv(file = "bank_full.csv", sep = ";"))
 bank0_sm <- read.csv(file = "bank.csv", sep = ";")
 ```
 
+`bank0` è il nome dato al dataset che utilizzeremo.
+
 ##Informazioni sul dataset
 
 ```{r dim dataset}
@@ -64,13 +67,14 @@ dim(bank0)
 
 Il dataset è composto da circa 45000 osservazioni e da 17 variabili. Vediamo meglio quali sono le variabili:
 
-```{r dim dataset}
+```{r str dataset}
 str(bank0)
 ```
 
 Al link sopra riportato vi è la descrizione delle 17 variabili presenti nel dataset, che noi approfondiremo singolarmente nella nostra analisi. Per ora basti la seguente sintesi:
 
-* *Variabili legate al profilo del cliente*
+**Variabili legate al profilo del cliente**
+
 * age: età del cliente
 * job: professione svolta dal cliente
 * marital : stato coniugale del cliente
@@ -79,66 +83,115 @@ Al link sopra riportato vi è la descrizione delle 17 variabili presenti nel dat
 * balance: saldo medio annuale del conto
 * housing: presenza di mutuo per la casa
 * loan: presenza di prestiti
-* *Variabili legate all'ultimo contatto dell'attuale campagna di marketing*
+
+**Variabili legate all'ultimo contatto dell'attuale campagna di marketing**
+
 * contact: modalità di comunicazione per l'ultimo contatto avvenuto
 * day: giorno del mese dell'ultimo contatto avvenuto
 * month: mese dell'ultimo contatto avvenuto
 * duration: durata (in secondi) dell'ultimo contatto avvenuto
-* *Variabili legate all'attuale o a precedente campagna di marketing*
+
+**Variabili legate all'attuale o a precedente campagna di marketing**
+
 * campaign: totale di contatti avvenuti durante l'attuale campagna di marketing per ogni cliente
 * pdays: numero di giorni trascorsi prima che il cliente fosse contattato per questa campagna dopo la fine della campagna precedente
 * previous: numerodi contatti avvenuti prima di questa campagna
 * poutcome: esito della precedente campagna di marketing
 
-##Output variable (desired target)
+**Variabile target: sottoscrizione o meno del deposito**
 
-*   17 - y - has the client subscribed a term deposit? (binary: "yes","no")
+Verifichiamo che non ci siano valori mancanti
 
-It should be stressed that due to internal competition and current financial crisis, there are huge pressures for European banks to increase a financial asset. To solve this issue, one adopted strategy is offer attractive long-term deposit applications with good interest rates, in particular by using directed marketing campaigns. Also, the same drivers are pressing for a reduction in costs and time. Thus, there is a need for an improvement in efficiency: lesser contacts should be done, but an approximately number of successes (clients subscribing the deposit) should be kept.
-
-##Missing Attribute Values
-None
-
-#Esplorazione del dataset
-
-##Esplorazione dimensioni
-
-
-
-Non ci sono variabili numeriche, solo interi e fattori. Da capire se servirà qualche trasformazione
-#Esplorazione tabellare distribuzioni univariate
-
-```{r 5 quantities}
-summary(bank0)
+```{r missing vaue detect}
+bank0[!complete.cases(bank0),]
 ```
 
-##Age
+Nessuna riga contiene valori mancanti.
 
-```{r age graph, fig.width=16, fig.height=7}
-g_age <- ggplot(bank0, aes(x = factor(age))) + geom_bar(col = "white")
+##Esplorazione variabili: age
+
+Da indicazioni del dizionario dati, `age` è una variabile numerica che misura l'età del cliente, anche se non sappiamo in quale momento (assumiamo quello attuale di processamento del modello).
+
+```{r age 5 quantities}
+class(bank0$age)
+summary(bank0$age)
+```
+
+Il range è dai 18 ai 95, vediamo in forma tabellare e grafica la distribuzione delle varie età.
+
+```{r age table and graph, fig.width=16, fig.height=7}
+t_age <- bank0 %>%
+        group_by(age) %>%
+        summarise(frequenza = n()) %>% 
+        mutate(frequenza_relativa = frequenza / sum(frequenza))
+kable(t_age, digits = 4, format = "markdown")
+
+g_age <- ggplot(bank0, aes(x = factor(age))) + geom_bar(col = "white") +
+        ggtitle("distribuzione per età") +
+        xlab("età") +
+        ylab("frequenza")    
 g_age
+```
+
+Una distribuzione quasi normale, con maggioritaria presenza di clienti dai 30 ai 60 anni, pochissimi diciotenni e ultra-ottantenni.
+
+Ora vediamo come la penetrazione del prodotto si distribuisce all'interno delle varie età (in questo e in tutti gli altri grafici la linea orizzontale trattegiata rappresenta la percentuale di sottoscrizioni complessiva del campione, `r mean(bank0$y =="yes")`.
+
+```{r age_y table and graph, fig.width=16, fig.height=7}
 g_age_y <- ggplot(bank0, aes(x = factor(age), fill = y)) + 
         geom_bar(col = "white", position = "fill") + 
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), size = 1.5, col = "black", linetype = 2) +
+        ggtitle("penetrazione per età") +
+        xlab("età") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì"))
 g_age_y
-```
 
-Vediamo che dai 30 ai 59 anni l'incidenza di sottoscrizioni è pari a quella complessiva; c'è anche da dire che dopo i 60 non ci sono numerosità grandi:
-
-```{r age table}
 t_age_y <- bank0 %>%
-        group_by (factor(age)) %>%
-        summarise (n = n(), perc_y = mean(y=="yes"))
-t_age_y
+        group_by (age) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y == "yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(age, frequenza, frequenza_relativa, tasso_sottoscrizioni)
+kable(t_age_y, digits = 4, format = "markdown")
 ```
 
-Una idea potrebbe essere quella di fare un binning 18-30, 31-59, 60 o più. Certo che la variabile sembra predittiva.
+Vediamo che dai 30 ai 59 anni l'incidenza di sottoscrizioni è prossima a quella complessiva, e rappresenta la parte più numerosa del campione. La penetrazione del prodotto comincia a essere superiore a quella complessiva, di portafoglio diciamo, per fasce di età molto giovani o ultra-sessantenni, dove però la numerosità (e quindi la significatività) è inferiore. 
 
-```{r age IV}
-bank0$age_num <- as.numeric(bank0$age)
-bank0$age_class <- cut(bank0$age_num, breaks = c(min(bank0$age_num)-1, 30, 59, max(bank0$age_num)))
-bank_age_na <- bank0[is.na(bank0$age_class),]
+Potrebbe essere interessante raggruppare le età per fasce dal comportamento simile: [18, 30], [31, 59], [60, 95]
 
+```{r age_class_y table and graph}
+bank0$age <- as.numeric(bank0$age)
+bank0$age_class <- cut(bank0$age, breaks = c(min(bank0$age)-1, 30, 59, max(bank0$age)), labels = c("[18, 30]", "[31, 59]", "[60, 95]"))
+summary(bank0$age_class)
+
+t_age_class <- bank0 %>%
+        select(age_class, y) %>%
+        group_by(age_class) %>%
+        summarise(frequenza = n(), tasso_sottoscrizioni = mean(y =="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(age_class, frequenza, frequenza_relativa, tasso_sottoscrizioni)
+kable(t_age_class, digits = 4, format = "markdown")
+
+g_age_class_y <- ggplot(bank0, aes(x = age_class, fill = y)) + 
+        geom_bar(col = "white", position = "fill") + 
+        geom_hline(yintercept = mean(bank0$y!="yes"), size = 1.5, col = "black", linetype = 2) +
+        ggtitle("penetrazione per età") +
+        xlab("fasce di età") +
+        ylab("tasso sottoscrizioni") +
+        scale_x_discrete(labels = c("[18, 30]", "[31, 59]", "[60, 95]")) +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì"))
+g_age_class_y
+```
+
+è evidente che giovani e anziani sottoscrivono più del campione nel complesso, che nel comportamento è guidato dalla fascia media, gli adulti. Inoltre l'alta penetrazione della fascia anziana va pesato per la scarsa rilevanza numerica nel campione, il 4% circa, ma comunque di dimensione significativa.
+
+Ha senso questa distribuzione? Beh, ci si può aspettare che un deposito a lungo termine venga sottoscritto di più da giovani che vogliono investire i loro risparmi (magari regali dei loro cari), mentre la fascia adulta avendo già molte spese (mantenimento della famiglia, mutui, presiti - in questi ultimi due casi potremo verificare l'ipotesi di una qualche interazione) abbia meno possibilità di farlo. Quanto agli anziani, per saperlo dovremmo conoscere meglio le caratteristiche del prodotto, magari lo hanno sottoscritto ma per farne beneficiare gli eredi.
+
+Come per ogni variabile che analizzeremo, l'analisi termina con il calcolo dell'**information value**, una misura del potere predittivo della variabile per la cui trattazione teorica rimandiamo al capitolo secondo.
+
+```{r age class IV}
 age_class_woe <- bank0 %>%
         select(age_class, y) %>%
         group_by(age_class) %>%
@@ -147,37 +200,58 @@ age_class_woe <- bank0 %>%
         select (starts_with("perc"))
 age_class_woe$woe <- log(age_class_woe$perc_no / age_class_woe$perc_y)
 age_class_IV <- sum((age_class_woe$perc_no - age_class_woe$perc_y) * age_class_woe$woe)
+age_class_IV
 ```
 
-```{r}
-bank0 %>%
-        select(age_class, y) %>%
-        group_by(age_class) %>%
-        summarise(n = n(), perc_y = mean(y =="yes"))
-```
+`r age_class_IV` , confrontato con la griglia del capitolo secondo, ci fa dire che l'età, raggruppata in tre classi, è una variabile mediamente predittiva della sottoscrizione. 
 
 ##Job
 
-```{r job graph}
+La professione svolta dal cliente. Iniziamo con tabella e grafico della distribuzione:
+
+```{r job table and graph }
+t_job <- bank0 %>%
+        group_by (job) %>%
+        summarise (frequenza = n()) %>%
+        mutate (frequenza_relativa = frequenza / sum(frequenza)) %>%
+        arrange(desc(frequenza_relativa))
+kable(t_job, digits = 4, format = "markdown")
+
 g_job  <- ggplot(bank0, aes(x = job)) +
-        geom_bar()
+        geom_bar() +
+        ggtitle("distribuzione per job") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_job
+```
+
+**commento sulla distribuzione**
+
+Vediamo adesso come, all'interno dei vari livelli della professione, si distribuiscono i sottoscrittori:
+
+```{r job_y table and graph}
+t_job_y <- bank0 %>%
+        group_by (job) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(job, frequenza, frequenza_relativa, tasso_sottoscrizioni) %>%
+        arrange(desc(tasso_sottoscrizioni))
+kable(t_job_y, digits = 4, format = "markdown")
+
 g_job_y  <- ggplot(bank0, aes(x = job, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per job") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1))
 g_job_y
 ```
 
-Non molto predittivo, c'è l'età che fa da counfounding e spiega la stessa variabilità di studenti e pensionati.
-
-```{r job table}
-t_job_y <- bank0 %>%
-        group_by (job) %>%
-        summarise (n = n(), perc_y = mean(y=="yes"))
-t_job_y
-```
+**commento sulla distribuzione**
 
 Non mi spiego perché i disoccupati tendano a fare più depositi. Forse in questa categoria ci sono giovani a cui il deposito viene regalato dai genitori.
+
+Da Ultimo calcoliamo l'information value della variabile `job`:
 
 ```{r job IV}
 job_woe <- bank0 %>%
@@ -188,19 +262,9 @@ job_woe <- bank0 %>%
         select (starts_with("perc"))
 job_woe$woe <- log(job_woe$perc_no / job_woe$perc_y)
 job_IV <- sum((job_woe$perc_no - job_woe$perc_y) * job_woe$woe)
-
-#woe_func <- function(x) {
-        #bank0 %>%
-        #select_(x, "y") %>%
-        #group_by_(x) %>%
-        #summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
-        #mutate(perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
-        #select(starts_with("perc"))
-
-#paste(c("x","_","IV"), collapse="") <- sum((perc_no - perc_y) * log(perc_no / perc_y))       
-#}
-#woe_func("job")#la NSE è troppo complessa
 ```
+
+Anche `job` ha un potere predittivo di media entità.
 
 ##Marital
 
@@ -859,7 +923,11 @@ Duration class è la più sospetta, troppo predittiva. Può darsi che i miei sos
 #GGpairs
 
 ```{r ggpairs, fig.width=20, fig.height=20}
-#bank0_ggpairs <- ggpairs(bank0_sm) non è venuto bene
+#bank0_prof_ggpairs <- ggpairs(bank0_sm[])
+#bank0_contact_ggpairs <- ggpairs(bank0_sm[])
+#bank0_campaign_ggpairs <- ggpairs(bank0_sm[])
+
+
 ```
 
 #Tre tipologie di relazione tra tre variabili
@@ -1293,20 +1361,20 @@ plot(AUCPR_glm1_vsa)
 
 
 
-Prima stepwise selection su tutto il training
+Prima stepwise selection su tutto il training (la commento per ora)
 
 ```{r backward e forward}
-glm2_beforebackstep_training <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + previous, family = "binomial", data = training_set_vsa)
+#glm2_beforebackstep_training <- glm(y~age + job + marital + education + default + balance + housing + loan + contact + pdays + day + month + campaign + previous, family = "binomial", data = training_set_vsa)
 
-glm2_backstep_selection <- stepAIC(object = glm2_beforebackstep_training, direction = "backward", scope = c(upper = ~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous, lower = ~1))
+#glm2_backstep_selection <- stepAIC(object = glm2_beforebackstep_training, direction = "backward", scope = c(upper = ~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous, lower = ~1))
 
-glm2_backstep_selection$anova
+#glm2_backstep_selection$anova
 
-glm2_beforeforwardstep_training <- glm(y~1, family = "binomial", data = training_set_vsa)
+#glm2_beforeforwardstep_training <- glm(y~1, family = "binomial", data = training_set_vsa)
 
-glm2_forwardstep_selection <- stepAIC(object = glm2_beforeforwardstep_training, direction = "forward", scope = c(upper = ~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous, lower = ~1))
+#glm2_forwardstep_selection <- stepAIC(object = glm2_beforeforwardstep_training, direction = "forward", scope = c(upper = ~age + job + marital + education + default + balance + housing + loan + contact + day + month + campaign + pdays + previous, lower = ~1))
 
-glm2_forwardstep_selection$anova
+#glm2_forwardstep_selection$anova
 ```
 
 Allora, la backward come final model presenta y ~ age + job + marital + education + balance + housing + loan + 
@@ -1373,7 +1441,6 @@ formula_glm3 <- y ~ age_class + job + marital + balance_class + housing + loan +
 
 ```{r glm3 vsa building}
 glm3_vsa <- glm(formula_glm3, family = "binomial", data = training_set_vsa)
-
 summary(glm3_vsa) #AIC molto basso, è normale la sovrastima delle performance, che non vuol dire overfitting.
 ```
 
@@ -1386,12 +1453,11 @@ AIC più bassa sinora.
 ```{r glm 3 coll}
 matrix_glm3 <- model.matrix(glm3_vsa)
 matrix_glm3 <- matrix_glm3[,colSums(matrix_glm3 != 0) != 0]
-
 cd_glm3 <- colldiag(matrix_glm3)
 print(cd_glm3)
 str(cd_glm3)
 cd_glm3$condindx
-cd_glm3$pi[84,]
+#cd_glm3$pi[84,]
 ```
 
 Pdays  e previous_class danno un problema di multicollinearità. Tolgo previous class  eil problema non c'è più.
