@@ -243,6 +243,7 @@ g_job_y  <- ggplot(bank0, aes(x = job, fill = y)) +
         ggtitle("penetrazione per job") +
         ylab("tasso sottoscrizioni") +
         scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_job_y
 ```
@@ -303,6 +304,7 @@ g_marital_y  <- ggplot(bank0, aes(x = marital, fill = y)) +
         ggtitle("penetrazione per marital") +
         ylab("tasso sottoscrizioni") +
         scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_marital_y
 ```
@@ -360,6 +362,7 @@ g_education_y  <- ggplot(bank0, aes(x = education, fill = y)) +
         ggtitle("penetrazione per education") +
         ylab("tasso sottoscrizioni") +
         scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_education_y
 ```
@@ -419,6 +422,7 @@ g_default_y  <- ggplot(bank0, aes(x = default, fill = y)) +
         ggtitle("penetrazione per default") +
         ylab("tasso sottoscrizioni") +
         scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_default_y
 ```
@@ -441,57 +445,81 @@ default_IV
 
 Predittività assente.
 
-**ripartire da qui**
-
 ##Balance
 
-```{r balance graph}
+Il saldo medio sul conto corrente del cliente; in questo caso adottiamo un grafico boxplot, data la natura quantitativa della variabile: 
+
+```{r balance quant graph and table}
 g_balance <- ggplot(bank0, aes(x = 1, y = balance)) + 
-        geom_boxplot()
+        geom_boxplot() +
+        ggtitle("distribuzione di balance") +
+        xlab("") +
+        scale_x_continuous(labels = c("", "", "", "", ""))
 g_balance
 
-g_balance_y <- ggplot(bank0, aes(x = y, y = balance)) + 
-        geom_boxplot()
-g_balance_y
+balance_quantile <- quantile(bank0$balance, c(seq(0.1, 1, 0.05)))
+balance_quantile
 ```
 
-è una distribuzione con un range molto ampio ma un range interquartile molto ristretto, sia complessivamente che per i due gruppi. Provo a capire se posso analizzare i dati fino al 95 percentile
+Come sia il grafico che la distribuzione dei percentili ci mostrano, `balance` presenta dei valori anomali che rendono l'intervallo dei valori incredibilmente ampio; per così dire, i pochi ricchi clienti della banca.
 
-```{r balance table}
-quantile(bank0$balance, c(seq(0.1, 1, 0.05)))
-balance_p_95 <- quantile(bank0$balance, 0.95)
+Vediamo che tipo di distribuzione prende forma se escludiamo il 2% dei valori più alti.
+
+```{r balance quant graph p98}
+balance_p_98 <- quantile(bank0$balance, 0.98)
+bank0_p98 <- bank0 %>%
+        filter(balance <= balance_p_98)
+g_balance_p98 <- ggplot(bank0_p98, aes(x = 1, y = balance)) + 
+        geom_boxplot() +
+        ggtitle("distribuzione di balance - 98-esimo percentile") +
+        xlab("") +
+        scale_x_continuous(labels = c("", "", "", "", "")) +
+        scale_y_continuous(breaks = seq(min(bank0$balance), balance_p_98, 1000))
+g_balance_p98
 ```
 
-```{r balance graph p95}
-bank0_p95 <- bank0 %>%
-        filter(balance <= balance_p_95)
-g_balance_p95 <- ggplot(bank0_p95, aes(x = 1, y = balance)) + 
-        geom_boxplot()
-g_balance_p95
+Il 50% dei valori è tra 0 e 1000 euro, ora la distribuzione di `balance` è più chiara. Vediamo cosa succede condizionando la distribuzione alla sottoscrizione o meno
 
-g_balance_y_p95 <- ggplot(bank0_p95, aes(x = y, y = balance)) + 
-        geom_boxplot()
-g_balance_y_p95
+```{r balance_y quant graph}
+g_balance_y_p98 <- ggplot(bank0_p98, aes(x = y, y = balance)) + 
+        geom_boxplot(aes(col = y)) +
+        ggtitle("distribuzione di balance - 98-esimo percentile secondo la sottoscrizione") +
+        xlab("sottoscrizione") + 
+        scale_x_discrete(labels = c("no", "sì")) +
+        scale_color_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        scale_y_continuous(breaks = seq(min(bank0$balance), balance_p_98, 1000))
+g_balance_y_p98
 ```
 
-Ora comincia a essere evidente che chi sottoscrive depositi tende a avere saldo sul conto più alto; vale per la mediana del gruppo sì, ma anche per il terzo quartile. Quindi per saldi che crescono si tende a sottoscrivere più depositi, il che ha senso. più soldi hai, più ne puoi depositare.
+Ora comincia a essere evidente che chi sottoscrive depositi tende a avere un saldo medio del conto più alto; vale per la mediana del gruppo dei sottoscrittori, ma anche per il terzo quartile. Quindi per saldi che crescono si tende a sottoscrivere più depositi, il che ha senso. Più soldi hai, più ne puoi depositare.
 
-```{r balance class table}
+Ora, anche ai fini del calcolo dell'information value, raggruppiamo `balance` in classi e analizziamo la distribuzione dei sottoscrittori all'interno dei vari livelli.
+
+```{r balance_class_y table and graph}
 bank0$balance <- as.numeric(bank0$balance)
-
-balance_quantile <- quantile(bank0$balance, probs = seq(0.1,1,0.1))
-
-bank0$balance_class <- cut(bank0$balance, breaks = c(min(bank0$balance)-1, -1, balance_quantile), right = TRUE, labels = c("negative", "0", "(0, 22]", "(22,131]", "(131,272]", "(272,448]", "(448,701]", "(701,1126]", "(1126,1859]", "(1859,3574]", "(3574,102127]"))
+balance_decile <- quantile(bank0$balance, probs = seq(0.1,1,0.1))
+bank0$balance_class <- cut(bank0$balance, breaks = c(min(bank0$balance)-1, -1, balance_decile), right = TRUE, labels = c("negative", "0", "(0, 22]", "(22,131]", "(131,272]", "(272,448]", "(448,701]", "(701,1126]", "(1126,1859]", "(1859,3574]", "(3574,102127]"))
 summary(bank0$balance_class)
-bank_balance_na <- bank0[is.na(bank0$balance_class),] #ok
-
 
 t_balance_class_y <- bank0 %>%
         group_by (balance_class) %>%
-        summarise(n(), mean(y == "yes"))
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(balance_class, frequenza, frequenza_relativa, tasso_sottoscrizioni)
+kable(t_balance_class_y, digits = 4, format = "markdown")
+
+g_balance_class_y  <- ggplot(bank0, aes(x = balance_class, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per balance_class") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_balance_class_y
 ```
 
-Esatto. al crescere del saldo cresce la quota di coloro che sottoscrivono.
+Evidente come spostandosi verso gruppi di saldo maggiore (gruppi di numerosità simile, ricordiamolo) cresce la probabilità di sottoscrivere un deposito a medio termine. E l'information value?
 
 ```{r balance IV}
 balance_class_woe <- bank0 %>%
@@ -502,30 +530,57 @@ balance_class_woe <- bank0 %>%
         select (starts_with("perc"))
 balance_class_woe$woe <- log(balance_class_woe$perc_no / balance_class_woe$perc_y)
 balance_class_IV <- sum((balance_class_woe$perc_no - balance_class_woe$perc_y) * balance_class_woe$woe)
+balance_class_IV
 ```
 
+Il valore di `r balance_class_IV` rientra tra i predittori di media rilevanza. 
 
+**ripartire di qui**
 ##Housing
 
-```{r housing graph}
+La variabile di dice se il cliente ha o meno sottoscritto un mutuo ipotecario per l'acquisto di un immobile
+
+```{r housing graph and table}
+t_housing  <- bank0 %>%
+        group_by(housing) %>%
+        summarise(frequenza = n()) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        arrange(desc(frequenza))
+kable(t_housing, digits = 4, format = "markdown")
+
 g_housing  <- ggplot(bank0, aes(x = housing)) +
-        geom_bar()
+        geom_bar() +
+        ggtitle("distribuzione per housing") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_housing
+```
+
+Vediamo ora il comportamento dei sottoscrittori.
+
+Poco più della metà dei clienti ha il mutuo, l'altra no. Entrambe le classi sono estremanente significative, quindi.
+
+```{r housing_y table and graph}
+t_housing_y <- bank0 %>%
+        group_by (housing) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(housing, frequenza, frequenza_relativa, tasso_sottoscrizioni) %>%
+        arrange(desc(tasso_sottoscrizioni))
+kable(t_housing_y, digits = 4, format = "markdown")
+
 g_housing_y  <- ggplot(bank0, aes(x = housing, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per housing") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_housing_y
 ```
 
-Una buona predittività, peraltro due gruppi di quasi uguale dimensione. Chi ha già un mutuo per la casa non sottoscrive depositi a lungo termine, ovvio.
-
-
-```{r housing table}
-t_housing_y <- bank0 %>%
-        group_by (housing) %>%
-        summarise (n = n(), perc_y = mean(y=="yes"))
-t_housing_y
-```
+La distinzione tra mutuatari o meno se,bra abbastanza discriminante sulla sottoscrizione; un gruppo sottoscrive al 16,5%, l'altro al 7,5%. Ha una logica il fatto che chi ha dovuto accolarsi un mutuo non abbia risorse finanziarie da investire per rendimento nel lungo periodo, data l'esigenza pressante di liquidità. Alla luce di ciò l'information value dovrebbe presentarci una variabile con potere predittivo medio.
 
 ```{r housing IV}
 housing_woe <- bank0 %>%
@@ -536,8 +591,12 @@ housing_woe <- bank0 %>%
         select (starts_with("perc"))
 housing_woe$woe <- log(housing_woe$perc_no / housing_woe$perc_y)
 housing_IV <- sum((housing_woe$perc_no - housing_woe$perc_y) * housing_woe$woe)
+housing_IV
 ```
 
+Esatto.
+
+**ricominciare da qui**
 
 ##Loan
 
