@@ -535,7 +535,6 @@ balance_class_IV
 
 Il valore di `r balance_class_IV` rientra tra i predittori di media rilevanza. 
 
-**ripartire di qui**
 ##Housing
 
 La variabile di dice se il cliente ha o meno sottoscritto un mutuo ipotecario per l'acquisto di un immobile
@@ -596,31 +595,49 @@ housing_IV
 
 Esatto.
 
-**ricominciare da qui**
-
 ##Loan
 
-```{r loan graph}
+Variabile dicotomica che indica che il cliente ha richiesto e sta pagando un prestito.
+
+```{r loan graph and table}
+t_loan  <- bank0 %>%
+        group_by(loan) %>%
+        summarise(frequenza = n()) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        arrange(desc(frequenza))
+kable(t_loan, digits = 4, format = "markdown")
+
 g_loan  <- ggplot(bank0, aes(x = loan)) +
-        geom_bar()
+        geom_bar() +
+        ggtitle("distribuzione per loan") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_loan
+```
+
+La quota di persone con prestiti è intorno al 16%. Vediamo come si distribuiscono i sottoscrittori
+
+```{r loan_y table and graph}
+t_loan_y <- bank0 %>%
+        group_by (loan) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(loan, frequenza, frequenza_relativa, tasso_sottoscrizioni) %>%
+        arrange(desc(tasso_sottoscrizioni))
+kable(t_loan_y, digits = 4, format = "markdown")
+
 g_loan_y  <- ggplot(bank0, aes(x = loan, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per loan") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_loan_y
 ```
 
-Una buona predittività, ma minore del mutuo. Chi ha un prestito personale tende a sottoscrivere meno depositi, certo che è un gruppo più ristretto, e infatti chi non li sottoscrive si comporta pressoché come il campione (un pelino più sottoscrivente).
-
-
-```{r loan table}
-t_loan_y <- bank0 %>%
-        group_by (loan) %>%
-        summarise (n = n(), perc_y = mean(y=="yes"))
-t_loan_y
-```
-
-I volumi sono comunque significativi.
+Il 16% dei richiedenti prestito ha un tasso di sottoscrizione pari alla metà del restante 84%, che sottoscrive poco sopra la media di portafoglio. Ci si aspettava in effetti un comportamento simile a quello di `housing`, e sarà interessante vedere l'effetto di interazione in chi sta pagando sia mutuo che prestito.
 
 ```{r loan IV}
 loan_woe <- bank0 %>%
@@ -631,36 +648,54 @@ loan_woe <- bank0 %>%
         select (starts_with("perc"))
 loan_woe$woe <- log(loan_woe$perc_no / loan_woe$perc_y)
 loan_IV <- sum((loan_woe$perc_no - loan_woe$perc_y) * loan_woe$woe)
+loan_IV
 ```
 
-
-
-
-
-
-#Variabili di Contatto
+In realtà l'information value restituisce una predittività debole.
 
 ##Contact
 
-```{r contact graph}
+Variabile categoricha che indica la modalità di comunicazione col cliente.
+
+```{r contact graph and table}
+t_contact  <- bank0 %>%
+        group_by(contact) %>%
+        summarise(frequenza = n()) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        arrange(desc(frequenza))
+kable(t_contact, digits = 4, format = "markdown")
+
 g_contact  <- ggplot(bank0, aes(x = contact)) +
-        geom_bar()
+        geom_bar() +
+        ggtitle("distribuzione per contact") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_contact
+```
+
+In sostanza abbiamo un 6% tramkte fisso e il restante tramite cellullare. Purtroppo Un 29% dei clienti è stato contattato tramite modalità non rilevate.
+
+```{r contact_y graph and table}
+t_contact_y <- bank0 %>%
+        group_by (contact) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(contact, frequenza, frequenza_relativa, tasso_sottoscrizioni) %>%
+        arrange(desc(tasso_sottoscrizioni))
+kable(t_contact_y, digits = 4, format = "markdown")
+
 g_contact_y  <- ggplot(bank0, aes(x = contact, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per contact") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_contact_y
 ```
 
-Però, se la tipologia di contatto è sconosciuta non converte quasi nessuno, con cellulare più della media, e anche con telefono. buono a sapersi, ma che vorrà dire?
-
-```{r contact table}
-t_contact_y <- bank0 %>%
-        group_by (contact) %>%
-        summarise (n = n(), perc_y = mean(y=="yes"))
-t_contact_y
-```
-
+Interessantissimo notare che c'è una variabilità sistematica: se la modalità di contatto è sconosciuta la percentuale di sottoscrittori è bassissima. Questo vorrà dire qualcosa, ma è complicato immaginare il motivo. Il restante 70% di portafoglio sottoscrive al 14% circa, contro l'11,7% complessivo. La variabile sembra discriminante, vediamo se l'information value lo conferma.
 
 ```{r contact IV}
 contact_woe <- bank0 %>%
@@ -671,34 +706,57 @@ contact_woe <- bank0 %>%
         select (starts_with("perc"))
 contact_woe$woe <- log(contact_woe$perc_no / contact_woe$perc_y)
 contact_IV <- sum((contact_woe$perc_no - contact_woe$perc_y) * contact_woe$woe)
+contact_IV
 ```
 
-Finora la variabile più predittiva!
+Confermato, la predittività è di media / forte entità.
 
 ##Day
 
-La trasformo in fattore, 31 livelli su 45000 osservazioni: ha senso
+La variabile rileva il giorno del mese dell'ultimo contatto, che laddove `y = "yes` significa la chiamata di vendita.
 
 ```{r day graph}
+t_day  <- bank0 %>%
+        group_by(day) %>%
+        summarise(frequenza = n()) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        arrange(day)
+kable(t_day, digits = 4, format = "markdown")
+
 g_day  <- ggplot(bank0, aes(x = factor(day))) +
-        geom_bar()
+        geom_bar() +
+        ggtitle("distribuzione per day") +
+        xlab("day") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_day
+```
+
+Il 1, 10, 24 e 31 del mese accade poche volte che ci sia l'ultima chiamata della campagna. Chissà perché.
+
+```{r day_y graph and table}
+t_day_y <- bank0 %>%
+        group_by (day) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(day, frequenza, frequenza_relativa, tasso_sottoscrizioni) %>%
+        arrange(day)
+kable(t_day_y, digits = 4, format = "markdown")
+
 g_day_y  <- ggplot(bank0, aes(x = factor(day), fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per day") +
+        xlab("day") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_day_y
 ```
 
-Distribuzione trimodale, abbastanza strana. 
+I due giorni di maggior sottoscrizione sono quelli con il minor numero di contatti. Chissà perché. Sarebbe inoltre utile capire se c'è una interazione tra il giorno dell'ultima chiamata e il numero di contatti già effettuati, così da vedere se ci sono giorni dove basta una chiamata sola per vendere il prodotto. In generale c'è parecchia variabilità all'interno del mese sul tasso di sottoscrizioni.
 
-```{r day table}
-t_day_y <- bank0 %>%
-        group_by (day) %>%
-        summarise (n = n(), perc_y = mean(y=="yes"))
-t_day_y
-```
-
-I due giorni di maggior conversione sono quelli con i minori contatti. Credo bassa predittività.
 
 ```{r day IV}
 day_woe <- bank0 %>%
@@ -709,39 +767,54 @@ day_woe <- bank0 %>%
         select (starts_with("perc"))
 day_woe$woe <- log(day_woe$perc_no / day_woe$perc_y)
 day_IV <- sum((day_woe$perc_no - day_woe$perc_y) * day_woe$woe)
+day_IV
 ```
 
-Bassa ma non bassissima.
+Media predittività.
 
 ##Month
 
-```{r month graph}
-levels(bank0$month)
-class(bank0$month)
+La variabile rileva il mese del mese dell'ultimo contatto, che laddove `y = "yes` significa la chiamata di vendita.
+
+```{r month graph and table}
 bank0$month <- factor(bank0$month, levels = c("jan","feb","mar", "apr","may","jun", "jul","aug", "sep", "oct", "nov","dec"))
+t_month  <- bank0 %>%
+        group_by(month) %>%
+        summarise(frequenza = n()) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza))
+kable(t_month, digits = 4, format = "markdown")
+
 g_month  <- ggplot(bank0, aes(x = month)) +
-        geom_bar()
+        geom_bar() +
+        ggtitle("distribuzione per month") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_month
+```
+
+I mesi di ultima chiamata sono prevalentemente quelli estivi. La campagna di marketing è andata avant per due anni, quindi non è chiaro se ci sia stato o meno ogni anno un focus particolare in estate, quando magari l'operatività corrente è inferiore.
+
+
+```{r month_y graph and table}
+t_month_y <- bank0 %>%
+        group_by (month) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(month, frequenza, frequenza_relativa, tasso_sottoscrizioni)
+kable(t_month_y, digits = 4, format = "markdown")
+
 g_month_y  <- ggplot(bank0, aes(x = month, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per month") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_month_y
 ```
 
-Distribuzione molto concentrata in estate, con grande conversion nei mesi primaverili e autunnali. Perché? Pochissimi contatti, non più di centinaia. Il mese con più contatti ha la conversion più bassa. Potrebbe dipendendere dal fatto che minori quanttà di telefonate permettono maggiore qualità di vendita (vedi duration)? Forse, ma anche la stagionalità ha la sua parte. Chi pensa al futuro all'avvicinarsi dell'estate?
-
-
-```{r month table}
-t_month_y <- bank0 %>%
-        group_by (month) %>%
-        summarise (n = n(), perc_y = mean(y=="yes")) %>%
-        mutate (n_rel = n / sum(n)*100, n_rel_ind = 100/12) %>%
-        select(month, n, n_rel, n_rel_ind, perc_y)
-t_month_y
-```
-
-I  mesi di maggior conversione sono quelli con i minori contatti. Se anche l'information Value e il p.value sono favorevoli, potre non includere month perché non mi spiego l'associazione negativa tra conversion e volumi. Month è il mese di ultima chiamata, quella di chiusura. Il call center potrebbe aver fatto comunque molte chiamate non di chiusura nel mese, non è detto che maggio sia stato mese di maggior lavoro di dicembre. Tuttavia laddove si concentrano più ultime chiamate di chiusura si converte meno. Ci devo tornare a riflettere.
-
+I  mesi di maggior sottoscrizione, in percentuale, sono quelli con il minor numero di contatti. Si sottoscrive pochissimo d'estate, infatti, e questo dovrebbe indurci a pensare che il management non ponga un focus particolare sul fare gli outbound d'estate. Anche qui l'interazione con il numero di contatti precedenti può essere importante, e idem per la dirata dell'ultima chiamata: se ci sono ultime chiamate molto lunghe (magari perché si sta vendendo il prodotto) allora ci può stare che se ne facciano di meno in alcuni mesi.
 
 ```{r month IV}
 month_woe <- bank0 %>%
@@ -752,10 +825,10 @@ month_woe <- bank0 %>%
         select (starts_with("perc"))
 month_woe$woe <- log(month_woe$perc_no / month_woe$perc_y)
 month_IV <- sum((month_woe$perc_no - month_woe$perc_y) * month_woe$woe)
+month_IV
 ```
 
-Varibile più predittiva finora!
-
+Predittività molto forte.
 
 ##Duration
 
