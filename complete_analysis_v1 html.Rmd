@@ -38,7 +38,7 @@ require(ggplot2)
 require(dplyr)
 require(tidyr)
 require(knitr)
-require("e1071")
+require(e1071)
 select <- dplyr::select
 ```
 
@@ -447,21 +447,20 @@ Predittività assente.
 
 ##Balance
 
-Il saldo medio sul conto corrente del cliente; in questo caso adottiamo un grafico boxplot, data la natura quantitativa della variabile: 
+Il saldo medio sul conto corrente del cliente; in questo caso adottiamo un istogramma, data la natura quantitativa della variabile: 
 
 ```{r balance quant graph and table}
-g_balance <- ggplot(bank0, aes(x = 1, y = balance)) + 
-        geom_boxplot() +
-        ggtitle("distribuzione di balance") +
-        xlab("") +
-        scale_x_continuous(labels = c("", "", "", "", ""))
-g_balance
-
 balance_quantile <- quantile(bank0$balance, c(seq(0.1, 1, 0.05)))
 balance_quantile
+
+g_balance <- ggplot(bank0, aes(x = balance)) + 
+        geom_histogram(binwidth = 500) +
+        ggtitle("distribuzione di balance") +
+        ylab("frequenza")
+g_balance
 ```
 
-Come sia il grafico che la distribuzione dei percentili ci mostrano, `balance` presenta dei valori anomali che rendono l'intervallo dei valori incredibilmente ampio; per così dire, i pochi ricchi clienti della banca.
+Come sia il grafico che la distribuzione dei percentili ci mostrano, `balance` presenta dei valori anomali che rendono l'intervallo dei valori incredibilmente ampio; per così dire, i pochi ricchi clienti della banca, mentre il 79% è tra 0 e 1000.
 
 Vediamo che tipo di distribuzione prende forma se escludiamo il 2% dei valori più alti.
 
@@ -814,7 +813,7 @@ g_month_y  <- ggplot(bank0, aes(x = month, fill = y)) +
 g_month_y
 ```
 
-I  mesi di maggior sottoscrizione, in percentuale, sono quelli con il minor numero di contatti. Si sottoscrive pochissimo d'estate, infatti, e questo dovrebbe indurci a pensare che il management non ponga un focus particolare sul fare gli outbound d'estate. Anche qui l'interazione con il numero di contatti precedenti può essere importante, e idem per la dirata dell'ultima chiamata: se ci sono ultime chiamate molto lunghe (magari perché si sta vendendo il prodotto) allora ci può stare che se ne facciano di meno in alcuni mesi.
+I  mesi di maggior sottoscrizione, in percentuale, sono quelli con il minor numero di contatti. Si sottoscrive pochissimo d'estate, infatti, e questo dovrebbe indurci a pensare che il management non ponga un focus particolare sul fare gli outbound d'estate. Anche qui l'interazione con il numero di contatti precedenti può essere importante, e idem per la durata dell'ultima chiamata: se ci sono ultime chiamate molto lunghe (magari perché si sta vendendo il prodotto) allora ci può stare che se ne facciano di meno in alcuni mesi.
 
 ```{r month IV}
 month_woe <- bank0 %>%
@@ -832,29 +831,59 @@ Predittività molto forte.
 
 ##Duration
 
-```{r duration graph}
-g_duration <- ggplot(bank0, aes(x = 1, y = duration)) + 
-        geom_boxplot()
-g_duration
+Durata in secondi dell'ultima chiamata effettuata al cliente. Se il valore è pari a zero significa che all'ultima chiamata il cliente non ha risposto. Analizziamo la distribuzione univariata:
 
+```{r duration quant graph and table}
+summary(bank0$duration)
+duration_quantile <- quantile(bank0$duration, c(seq(0.1, 1, 0.05)))
+duration_quantile
+
+g_duration <- ggplot(bank0, aes(x = duration)) + 
+        geom_histogram(binwidth = 20) +
+        ggtitle("distribuzione di duration") +
+        xlab("duration") +
+        ylab("frequenza") +
+        scale_x_continuous(breaks = seq(0, 5000, 250))+
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_duration
+```
+
+Una distribuzione molto concentrata in un piccolo intervallo, il 70% delle chiamate non supera i 280 secondi. Vediamo se il comportamento della variabile cambia considerando chi sottoscrive e chi non sottoscrive.
+
+```{r duration_y quant graph}
 g_duration_y <- ggplot(bank0, aes(x = y, y = duration)) + 
-        geom_boxplot()
+        geom_boxplot(aes(col = y)) +
+        ggtitle("distribuzione di duration per sottoscrizione") +
+        xlab("sottoscrizione") +
+        scale_x_discrete(labels = c("no", "sì")) +
+        scale_color_discrete(name="Sottoscrizione", labels=c("no", "sì"))
 g_duration_y
 ```
 
-A chiamate più lunghe corrisponde una maggiore propensione alla conversion! Da capire se si fa riferimento alla penultima o all'ultima chiamata (credo la penultima sennò non avrebbe senso utilizzarla in un modello predittivo).
-Se è la penultima chiamata, si può immaginare che o un cliente di suo interessato ti tenga dipiù al telefono o che un venditore che lo tiene di più al telefono lo invoglia a comprare. Se l'ultima chiamata, be, c'è da valutae l'aumento dei tempi dovuto all'informativa legale e alla parte sottoscrittiva. Andrà analizzato comunque il rapporto con giorno e mese, perché in quelle varaiabili bassi volumi (poche chiamate, chiamate molto lunghe?) portavano alta conversion. 
 
-
-```{r duration class table}
-summary(bank0$duration)
-duration_quantile <- quantile(bank0$duration[bank0$duration != 0], probs = seq(0.1,1,0.1))
-bank0$duration_class <- cut(bank0$duration, breaks = c(-1, 0, duration_quantile), right = TRUE, labels = c("no call", "(0,58]",  "(58,89]", "(89,117]", "(117,147]"," (147,180]", "(180,223]", "(223,280]", "(280,368]", "(368,548]", "(548,4918]"))
+```{r duration_class_y table and graph}
+duration_decile <- quantile(bank0$duration[bank0$duration != 0], probs = seq(0.1,1,0.1))
+bank0$duration_class <- cut(bank0$duration, breaks = c(-1, 0, duration_decile), right = TRUE, labels = c("no call", "(0,58]",  "(58,89]", "(89,117]", "(117,147]"," (147,180]", "(180,223]", "(223,280]", "(280,368]", "(368,548]", "(548,4918]"))
 
 t_duration_class_y <- bank0 %>%
         group_by (duration_class) %>%
-        summarise(n(), mean(y == "yes"))
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(duration_class, frequenza, frequenza_relativa, tasso_sottoscrizioni)
+kable(t_duration_class_y, digits = 4, format = "markdown")
+
+g_duration_class_y  <- ggplot(bank0, aes(x = duration_class, fill = y)) +
+        geom_bar(position = "fill") +
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per duration_class") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_duration_class_y
 ```
+
+Muovendosi all'interno dei 10 gruppi di dimensioni simili il tasso di sottoscrizione aumenta all'aumentare della durata della chiamata. La cosa ha senso, dato che una chiamata in cui si vende richiede tempo lunghi perché il cliente è molto interessato al prodotto e inoltre dovrà assolvere a dei questionari burocratici. Tuttavia la durata della chiamata non è nota in anticipo, quindi non ha senso includere la variabile in un modello predittivo.
 
 ```{r duration class graph}
 g_duration_class_y <- ggplot(bank0, aes(x = factor(duration_class), fill = y)) +
@@ -863,7 +892,6 @@ g_duration_class_y <- ggplot(bank0, aes(x = factor(duration_class), fill = y)) +
 g_duration_class_y
 ```
 
-Esatto. al crescere della durata della chiamata cresce la quota di coloro che sottoscrivono, o viceversa.
 
 ```{r duration IV} 
 #devo togliere i tre valori nulli di duration altrimenti la formula va in errore
@@ -876,9 +904,10 @@ duration_class_woe <- bank0 %>%
         select (starts_with("perc"))
 duration_class_woe$woe <- log(duration_class_woe$perc_no / duration_class_woe$perc_y)
 duration_class_IV <- sum((duration_class_woe$perc_no - duration_class_woe$perc_y) * duration_class_woe$woe)
+duration_class_IV
 ```
 
-Ampiamente la più predittiva.
+è infatti un valore di 1.6 è davvero sospetto, troppo alto per essere vero.
 
 ##Campaign
 
@@ -1405,8 +1434,8 @@ t_month_duration_class <- bank0 %>%
         select(duration_class, month, n_rel) %>%
         spread(duration_class, n_rel, fill = 0) %>%
         left_join(t_month_y, by = "month") %>%
-        select(-n, -n_rel, -n_rel_ind) %>%
-        arrange(desc(perc_y))
+        select(-frequenza, -frequenza_relativa) %>%
+        arrange(desc(tasso_sottoscrizioni))
 ```
 
 I mesi di maggior conversion hanno pochissimi volumi. Posto che volumi così bassi non sono significativi, è curioso che la conversion sia sempre altissima e non è mai, che so, bassissima. Noi non sappiamo il numero di chiamate svolte ogni mese dal call center, perché questa variabile conteggia l'ultima chiamata al cliente, che io immagino (per coerenza su come viene definita duration) sia quella di conversion o abbandono.
