@@ -109,7 +109,9 @@ bank0[!complete.cases(bank0),]
 
 Nessuna riga contiene valori mancanti.
 
-##Esplorazione variabili: age
+##Esplorazione variabili univariata e in rapporto alla sottoscrizione
+
+###age
 
 Da indicazioni del dizionario dati, `age` è una variabile numerica che misura l'età del cliente, anche se non sappiamo in quale momento (assumiamo quello attuale di processamento del modello).
 
@@ -141,7 +143,7 @@ Ora vediamo come la penetrazione del prodotto si distribuisce all'interno delle 
 ```{r age_y table and graph, fig.width=16, fig.height=7}
 g_age_y <- ggplot(bank0, aes(x = factor(age), fill = y)) + 
         geom_bar(col = "white", position = "fill") + 
-        geom_hline(yintercept = mean(bank0$y!="yes"), size = 1.5, col = "black", linetype = 2) +
+        geom_hline(yintercept = mean(bank0$y!="yes"), col = "black", linetype = 2) +
         ggtitle("penetrazione per età") +
         xlab("età") +
         ylab("tasso sottoscrizioni") +
@@ -176,7 +178,7 @@ kable(t_age_class, digits = 4, format = "markdown")
 
 g_age_class_y <- ggplot(bank0, aes(x = age_class, fill = y)) + 
         geom_bar(col = "white", position = "fill") + 
-        geom_hline(yintercept = mean(bank0$y!="yes"), size = 1.5, col = "black", linetype = 2) +
+        geom_hline(yintercept = mean(bank0$y!="yes"), col = "black", linetype = 2) +
         ggtitle("penetrazione per età") +
         xlab("fasce di età") +
         ylab("tasso sottoscrizioni") +
@@ -206,7 +208,7 @@ age_class_IV
 
 `r age_class_IV` , confrontato con la griglia del capitolo secondo, ci fa dire che l'età, raggruppata in tre classi, è una variabile mediamente predittiva della sottoscrizione. 
 
-##Job
+###Job
 
 La professione svolta dal cliente. Iniziamo con tabella e grafico della distribuzione:
 
@@ -268,7 +270,7 @@ job_IV
 
 Anche `job` ha un potere predittivo di media entità.
 
-##Marital
+###Marital
 
 La variabile descrive lo stato coniugale. Dal dizionario dati sappiamo che il valore "divorced" include anche i vedovi.
 
@@ -327,7 +329,7 @@ marital_IV
 
 Ha una predittività molto debole.
 
-##Education
+###Education
 
 ```{r education graph and table}
 t_education  <- bank0 %>%
@@ -445,7 +447,7 @@ default_IV
 
 Predittività assente.
 
-##Balance
+###Balance
 
 Il saldo medio sul conto corrente del cliente; in questo caso adottiamo un istogramma, data la natura quantitativa della variabile: 
 
@@ -534,7 +536,7 @@ balance_class_IV
 
 Il valore di `r balance_class_IV` rientra tra i predittori di media rilevanza. 
 
-##Housing
+###Housing
 
 La variabile di dice se il cliente ha o meno sottoscritto un mutuo ipotecario per l'acquisto di un immobile
 
@@ -594,7 +596,7 @@ housing_IV
 
 Esatto.
 
-##Loan
+###Loan
 
 Variabile dicotomica che indica che il cliente ha richiesto e sta pagando un prestito.
 
@@ -652,7 +654,7 @@ loan_IV
 
 In realtà l'information value restituisce una predittività debole.
 
-##Contact
+###Contact
 
 Variabile categoricha che indica la modalità di comunicazione col cliente.
 
@@ -672,7 +674,7 @@ g_contact  <- ggplot(bank0, aes(x = contact)) +
 g_contact
 ```
 
-In sostanza abbiamo un 6% tramkte fisso e il restante tramite cellullare. Purtroppo Un 29% dei clienti è stato contattato tramite modalità non rilevate.
+In sostanza abbiamo un 6% tramite fisso e il restante tramite cellullare. Purtroppo Un 29% dei clienti è stato contattato tramite modalità non rilevate.
 
 ```{r contact_y graph and table}
 t_contact_y <- bank0 %>%
@@ -710,7 +712,7 @@ contact_IV
 
 Confermato, la predittività è di media / forte entità.
 
-##Day
+###Day
 
 La variabile rileva il giorno del mese dell'ultimo contatto, che laddove `y = "yes` significa la chiamata di vendita.
 
@@ -771,7 +773,7 @@ day_IV
 
 Media predittività.
 
-##Month
+###Month
 
 La variabile rileva il mese del mese dell'ultimo contatto, che laddove `y = "yes` significa la chiamata di vendita.
 
@@ -829,7 +831,7 @@ month_IV
 
 Predittività molto forte.
 
-##Duration
+###Duration
 
 Durata in secondi dell'ultima chiamata effettuata al cliente. Se il valore è pari a zero significa che all'ultima chiamata il cliente non ha risposto. Analizziamo la distribuzione univariata:
 
@@ -885,14 +887,6 @@ g_duration_class_y
 
 Muovendosi all'interno dei 10 gruppi di dimensioni simili il tasso di sottoscrizione aumenta all'aumentare della durata della chiamata. La cosa ha senso, dato che una chiamata in cui si vende richiede tempo lunghi perché il cliente è molto interessato al prodotto e inoltre dovrà assolvere a dei questionari burocratici. Tuttavia la durata della chiamata non è nota in anticipo, quindi non ha senso includere la variabile in un modello predittivo.
 
-```{r duration class graph}
-g_duration_class_y <- ggplot(bank0, aes(x = factor(duration_class), fill = y)) +
-        geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
-g_duration_class_y
-```
-
-
 ```{r duration IV} 
 #devo togliere i tre valori nulli di duration altrimenti la formula va in errore
 duration_class_woe <- bank0 %>%
@@ -909,44 +903,65 @@ duration_class_IV
 
 è infatti un valore di 1.6 è davvero sospetto, troppo alto per essere vero.
 
-##Campaign
+###Campaign
 
-```{r campaign graph}
-g_campaign <- ggplot(bank0, aes(x = 1, y = campaign)) + 
-        geom_boxplot()
+Numero di contatti complessivi avuto con il cliente durante la campagna promozionale. Include l'ultimo contatto.
+
+```{r campaign quant table and graph}
+summary(bank0$campaign)
+campaign_quantile <- quantile(bank0$campaign, c(seq(0.1, 1, 0.05)))
+campaign_quantile
+
+g_campaign <- ggplot(bank0, aes(x = factor(campaign))) + 
+        geom_histogram(binwidth = 1) +
+        ggtitle("distribuzione di duration") +
+        xlab("campaign") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_campaign
-
-g_campaign_y <- ggplot(bank0, aes(x = y, y = campaign)) + 
-        geom_boxplot()
-g_campaign_y
 ```
 
-Non mi sembra discrimini molto il numero di contatti precedenti.
+Il 95% dei valori è tra 1 e 8 contatti. Ha senso raggruppare la variabile in classi 
 
-```{r campaign class table}
-bank0$campaign <- as.numeric(bank0$campaign)
-
-campaign_quantile <- quantile(bank0$campaign, probs = seq(0.1,1,0.1)) #considerando i quantili il binning lo faccio a mano
-
+```{r campaign_class table and graph}
 bank0$campaign_class <- cut(bank0$campaign, breaks = c(0, 1, 2, 3, 4, 5, max(bank0$campaign)+1), right = TRUE, labels = c("1", "2", "3", "4", "5", "up 5"))
-summary(bank0$campaign_class)
-bank_campaign_na <- bank0[is.na(bank0$campaign_class),] 
-nrow(bank_campaign_na) #ok
 
+t_campaign_class  <- bank0 %>%
+        group_by(campaign_class) %>%
+        summarise(frequenza = n()) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza))
+kable(t_campaign_class, digits = 4, format = "markdown")
+
+g_campaign_class  <- ggplot(bank0, aes(x = campaign_class)) +
+        geom_bar() +
+        ggtitle("distribuzione per campaign_class") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_campaign_class
+```
+
+Vediamo come si comportano i sottoscrittori attraverso i vari livelli di `campaign`.
+
+```{r campaign_class_ table and graph}
 t_campaign_class_y <- bank0 %>%
         group_by (campaign_class) %>%
-        summarise(n(), media = mean(y == "yes"))
-```
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(campaign_class, frequenza, frequenza_relativa, tasso_sottoscrizioni)
+kable(t_campaign_class_y, digits = 4, format = "markdown")
 
-```{r campaign class graph}
-g_campaign_class_y <- ggplot(bank0, aes(x = factor(campaign_class), fill = y)) +
+g_campaign_class_y  <- ggplot(bank0, aes(x = campaign_class, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per campaign_class") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_campaign_class_y
 ```
 
-Andamento normale. La maggiore conversion si ha per tra il 30 e il quarantesimo percentile di contatti (da capire quanti contatti sono).
-
+Meno chiamate vengono fatte ai clienti, più si vende (in proporzione). Significa che al cliente davvero interessato basta una chiamata. Solo la fascia "1 contatto" ha un tasso di sottoscrizione superiore a quello complessivo, questa è una informazione rilevante. Vediamo l'information value:
 
 ```{r campaign IV}
 campaign_class_woe <- bank0 %>%
@@ -957,64 +972,76 @@ campaign_class_woe <- bank0 %>%
         select (starts_with("perc"))
 campaign_class_woe$woe <- log(campaign_class_woe$perc_no / campaign_class_woe$perc_y)
 campaign_class_IV <- sum((campaign_class_woe$perc_no - campaign_class_woe$perc_y) * campaign_class_woe$woe)
-
-
-############################################
-bank0 <- bank0 %>%
-        mutate(c_class = ntile(campaign, 10))
-
-c_class_woe <- bank0 %>%
-        select(c_class, y) %>%
-        group_by(c_class) %>%
-        summarise(n_no = sum(y == "no"), n_y = sum(y == "yes")) %>%
-        mutate (perc_no = n_no / sum(n_no), perc_y = n_y / sum(n_y)) %>%
-        select (starts_with("perc"))
-c_class_woe$woe <- log(c_class_woe$perc_no / c_class_woe$perc_y)
-c_class_IV <- sum((c_class_woe$perc_no - c_class_woe$perc_y) * c_class_woe$woe)
-c_class_IV
-table(bank0$campaign, bank0$c_class)
+campaign_class_IV
 ```
 
-Wow, che scoperta. Se raggruppo campaign in classi definite da me in base ai quantili, l'information value è 0.08, abbastanza basso. Se uso ntile è 0.58, suspicious. E infatti è sospetto: ntile raggruppa in 10 gruppi di pari dimensioni, ma questo per distribuzioni molto strette comporta che in due gruppi diversi (livelli diversi, valori diversi) ci sia la stessa informazione. Se si vede la cross table, i gruppi 1 2 e 3 sono identici, ma portano (casualmente!) dei woe molto diversi!
+0.08, predittore debole.
 
-##pdays
+###pdays
 
-Considerando che questa variabile include info quantitative (giorni dall'ultima campagna) e qualitativa (contattato si/no) procederò subito con una fattorializzazione.
+Variabile che rileva il numero di giorni trascorsi da quando il cliente è stato contattato per una precedente campagna. Se `pdays = -1` allora il cliente non è stato mai contattato per la precedente campagna.
 
-```{r pdays graph}
+Vediamo come si distribuisce la variabile se il cliente è stato contattato.
+
+```{r pdays quant graph and table}
+summary(bank0$pdays[bank0$pdays != -1])
+pdays_decile <- quantile(bank0$pdays[bank0$pdays != -1], c(seq(0.1, 1, 0.1)))
 
 g_pdays_quant <- bank0  %>% 
         filter(pdays != -1) %>% 
-        ggplot(aes(x = 1, y = pdays)) + geom_boxplot()
+        ggplot(aes(x = pdays)) + 
+        geom_histogram(binwidth = 10) +
+        ggtitle("distribuzione di pdays") +
+        xlab("pdays") +
+        ylab("frequenza") +
+        scale_x_continuous(breaks = seq(0, 871, 50))+
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_pdays_quant
+````
 
-g_pdays_quant_y <- bank0  %>% 
+Una distribuzione quasi trimodale; immagino che nell'attuale campagna ci siano stati dei periodi con maggiore concentrazione di chiamate, che hanno generato quelle tre mode. Anche la variabile `month` conferma che ci sono stati mesi con molta più concentrazione di chiamate. Vediamo come si dsitribuisce `pdays` condizionando per la sottoscrizione:
+
+```{r pdays_y quant graph}
+g_pdays_quant_y <- bank0 %>% 
         filter(pdays != -1) %>% 
-        ggplot(aes(x = y, y = pdays)) + geom_boxplot()
+        ggplot(aes(x = y, y = pdays)) + 
+        geom_boxplot(aes(col = y)) +
+        ggtitle("distribuzione di pdays per sottoscrizione") +
+        xlab("sottoscrizione") +
+        scale_x_discrete(labels = c("no", "sì")) +
+        scale_color_discrete(name="Sottoscrizione", labels=c("no", "sì"))
+g_pdays_quant_y
 ```
- 
-Per chi è stato contattato in passato, è evidente che se è passato meno tempo tende a convertire di pià. 
 
-Proviamo un raggruppamento in classi. Potrei fare una classe per i mai contattati e poi 10 classi di pari frequenza.
+Chi non sottoscrive è un cliente per cui sono trascorsi più giorni dall'ultimo contatto. Questo ha senso. Dobbiamo tuttavia indagare il comportamento dei sottoscrittori anche tra chi non è mai stato contatatto, e per questo raggruppiamo la variabile in classi, una per i non contattati e poi dieci in base ai decili.
 
-```{r pdays class table}
-pdays_quantile <- quantile(bank0$pdays[bank0$pdays != -1], probs = seq(0.1,1,0.1))
-bank0$pdays_class <- cut(bank0$pdays, breaks = c(-2, 0, pdays_quantile), right = TRUE, labels = c("no campaign", "(0,91]",  "(91,108]", "(108,159]", "(159,181]"," (181,194]", "(194,258]", "(258,300]", "(300,343]", "(343,362]", "(362,871]"))
+```{r pdays_class table}
+bank0$pdays_class <- cut(bank0$pdays, breaks = c(-2, 0, pdays_decile), right = TRUE, labels = c("no campaign", "(0,91]",  "(91,108]", "(108,159]", "(159,181]"," (181,194]", "(194,258]", "(258,300]", "(300,343]", "(343,362]", "(362,871]"))
 table(bank0$pdays_class)
-#le classi non sono di uguale numerosità, ma è normale perché ci sono numeri che si ripetono. ntile infatti crea classi di uguale numerosità in cui uno stesso valore può stare in due classi diverse. non va bene.
 ```
 
-```{r pdays_class graph}
-g_pdays_class  <- ggplot(bank0, aes(x = pdays_class)) +
-        geom_bar()
-g_pdays_class#ovvio
+Circa l'80% dei clienti contattati per questa campagna non è mai stato contattato precedentemente. Ora vediamo come il tasso di sottoscrizione si distribuisce all'interno delle 11 classi:
+
+```{r pdays_class_y table and graph}
+t_pdays_class_y <- bank0 %>%
+        group_by (pdays_class) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(pdays_class, frequenza, frequenza_relativa, tasso_sottoscrizioni)
+kable(t_pdays_class_y, digits = 4, format = "markdown")
 
 g_pdays_class_y  <- ggplot(bank0, aes(x = pdays_class, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per pdays_class") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_pdays_class_y
 ```
 
-Variabile molto predittiva con andamento un po' anomalo. Molta conversione per pochi giorni trascorsi, poi meno, poi risale.
+In generale se in passato si è stati contattati si sottoscrive di più che se non lo si è mai stati; il tasso non decresce in maniera monotona ma la distribuzione sembra comunque abbastanza informativa.
 
 ```{r pdays_class IV}
 pdays_class_woe <- bank0 %>%
@@ -1025,64 +1052,72 @@ pdays_class_woe <- bank0 %>%
         select (starts_with("perc"))
 pdays_class_woe$woe <- log(pdays_class_woe$perc_no / pdays_class_woe$perc_y)
 pdays_class_IV <- sum((pdays_class_woe$perc_no - pdays_class_woe$perc_y) * pdays_class_woe$woe)
+pdays_class_IV
 ```
 
-0.34. Buona predittività.
+Infatti 0.34 come information value significa predittore potente.
 
-##Previous
+###Previous
 
-```{r previous graph}
+Numero di volte in cui il cliente è stato contattato prima di questa campagna.
 
-g_previous_quant <- ggplot(bank0, aes(x = 1, y = previous)) + 
-        geom_boxplot()
+```{r previous quant table and graph}
+previous_decile <- quantile(bank0$previous, c(seq(0.1, 1, 0.1)))
+previous_decile
+
+g_previous_quant <- ggplot(bank0, aes(x = previous)) + 
+        geom_histogram(binwidth = 5) +
+        ggtitle("distribuzione di previous") +
+        xlab("pdays") +
+        ylab("frequenza") +
+        scale_x_continuous(breaks = seq(0, 275, 5))+
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_previous_quant
+````
 
+L'80% dei clienti non è mai stato contattato, è una distribuzione molto strana. Vediamo distinguendo tra sottoscrittori e non in un boxplot:
+
+```{r previous_y quant graph}
 g_previous_quant_y <- ggplot(bank0, aes(x = y, y = previous)) + 
-        geom_boxplot()
+        geom_boxplot(aes(col = y)) +
+        ggtitle("distribuzione di previous per sottoscrizione") +
+        xlab("sottoscrizione") +
+        scale_x_discrete(labels = c("no", "sì")) +
+        scale_y_continuous(breaks = seq(0, 200, 10)) +
+        scale_color_discrete(name="Sottoscrizione", labels=c("no", "sì"))
 g_previous_quant_y
-
 ```
 
-Quasi nessuno è stato contattato, è una distribuzione fortemente asimettrica. Provo a fare i medesimi grafici togliendo il valore zero.
-
-```{r previous_nz graph}
-
-g_previous_nz_quant <- bank0  %>% 
-        filter(previous > 0) %>% 
-        ggplot(aes(x = 1, y = previous)) + geom_boxplot()
-g_previous_nz_quant
-
-g_previous_nz_quant_y <- bank0  %>% 
-        filter(previous > 0) %>% 
-        ggplot(aes(x = y, y = previous)) + geom_boxplot()
-g_previous_nz_quant_y
-```
-
-Comunque tutti valori molto molto bassi.
-
-Anche qui provo un raggruppamento in classi, 0 e non 0.
+In questo modo individuare una associazione tra `previous` e sottoscrizione è impossibile. Raggruppiamo in classi, anche se mi aspetto una forte correlazione con `pdays`.
  
-```{r previous class table}
-previous_quantile <- quantile(bank0$previous[bank0$previous > 0], probs = seq(0.1,1,0.1))
+```{r previous_class table}
+previous_nz_quantile <- quantile(bank0$previous[bank0$previous > 0], probs = seq(0.1,1,0.1))
 #Considerando i decili, preferisco fare 7 classi di non pari frequenza: da 0 a 6 e maggiore di 6
 bank0$previous_class <- cut(bank0$previous, breaks = c(0, 1, 2, 3, 4, 5, 7, max(bank0$previous)+1), right = FALSE, labels = c("0 contact", "1 contact",  "2 contact", "3 contact", "4 contact","5 or 6 contact", "+ 6 contact"))
 table(bank0$previous_class)
-summary(bank0$previous_class)#no NA
-#le classi non sono di uguale numerosità, ma è normale perché ci sono numeri che si ripetono. ntile infatti crea classi di uguale numerosità in cui uno stesso valore può stare in due classi diverse. non va bene.
+summary(bank0$previous_class)
 ```
 
-```{r previous_class graph}
-g_previous_class  <- ggplot(bank0, aes(x = previous_class)) +
-        geom_bar()
-g_previous_class #6 contact è classe davvero poco numerosa, non so se ricondurla a 5 o più => yes
+```{r previous_class_y graph and table}
+t_previous_class_y <- bank0 %>%
+        group_by (previous_class) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(previous_class, frequenza, frequenza_relativa, tasso_sottoscrizioni)
+kable(t_previous_class_y, digits = 4, format = "markdown")
 
 g_previous_class_y  <- ggplot(bank0, aes(x = previous_class, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per previous_class") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_previous_class_y
 ```
 
-Variabile molto predittiva , tendenzialmente più contatti ci sono stati per la precedente campagna più si converte per questa. Chiaro, è gente interessata che forse ha anche convertito per la precedente campagna (da analizzare la correlazione tra previos e poutcome)
+Anche qui c'è un comportamento chiaro: se non si è mai stati contattati si sottoscrive meno (in proporzione) della media, altrimenti sensibilmente di più. Mi aspetto forte predittività:
 
 ```{r previous_class IV}
 previous_class_woe <- bank0 %>%
@@ -1093,30 +1128,54 @@ previous_class_woe <- bank0 %>%
         select (starts_with("perc"))
 previous_class_woe$woe <- log(previous_class_woe$perc_no / previous_class_woe$perc_y)
 previous_class_IV <- sum((previous_class_woe$perc_no - previous_class_woe$perc_y) * previous_class_woe$woe)
+previous_class_IV
 ```
 
-0.22 discreta predittività.
+0.22 è vicina ad essere forte predittività.
 
-##Poutcome
+###Poutcome
 
-```{r poutcome graph}
+Esito della precedente campagna promozionale per il medesimo cliente. Analizziamo subito la distribuzione univariata:
+
+```{r poutcome table and graph }
+t_poutcome <- bank0 %>%
+        group_by (poutcome) %>%
+        summarise (frequenza = n()) %>%
+        mutate (frequenza_relativa = frequenza / sum(frequenza)) %>%
+        arrange(desc(frequenza_relativa))
+kable(t_poutcome, digits = 4, format = "markdown")
+
 g_poutcome  <- ggplot(bank0, aes(x = poutcome)) +
-        geom_bar()
+        geom_bar() +
+        ggtitle("distribuzione per poutcome") +
+        ylab("frequenza") +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_poutcome
+```
+
+Gli "unknown" saranno senz'altro quell'80% di clienti mai contattati. Vediamo nelle quattro fascie come si sottoscrive:
+
+```{r poutcome_y table and graph}
+t_poutcome_y <- bank0 %>%
+        group_by (poutcome) %>%
+        summarise (frequenza = n(), tasso_sottoscrizioni = mean(y=="yes")) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(poutcome, frequenza, frequenza_relativa, tasso_sottoscrizioni) %>%
+        arrange(desc(tasso_sottoscrizioni))
+kable(t_poutcome_y, digits = 4, format = "markdown")
+
 g_poutcome_y  <- ggplot(bank0, aes(x = poutcome, fill = y)) +
         geom_bar(position = "fill") +
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
+        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
+        ggtitle("penetrazione per poutcome") +
+        ylab("tasso sottoscrizioni") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        scale_fill_discrete(name="Sottoscrizione", labels=c("no", "sì")) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_poutcome_y
 ```
 
-Unknown saranno i zero contact e i no camaign. Lo capirò analizzando la relazione tra queste variabili. Ovviamente per chi ha convertito la scora volta grande conversion anche stavolta.
-
-```{r poutcome table}
-t_poutcome_y <- bank0 %>%
-        group_by (poutcome) %>%
-        summarise (n = n(), perc_y = mean(y=="yes"))
-t_poutcome_y
-```
+Se la precedente campagna ha avuto successo si sottoscrive in percentuali altissime. Persino se è stata fallimentare però si sottoscrive di più che se non si è mai stati contatatti; questo è coerente con l'analisi di `previous`, per cui il gruppo dei contattati sottoscriveva comunque di più dei mai contatatti.
 
 ```{r poutcome IV}
 poutcome_woe <- bank0 %>%
@@ -1127,14 +1186,14 @@ poutcome_woe <- bank0 %>%
         select (starts_with("perc"))
 poutcome_woe$woe <- log(poutcome_woe$perc_no / poutcome_woe$perc_y)
 poutcome_IV <- sum((poutcome_woe$perc_no - poutcome_woe$perc_y) * poutcome_woe$woe)
+poutcome_IV
 ```
 
-0.51, molto predittiva, ovviamente.
+0.51, molto predittiva, ai limiti del sospetto.
 
+###Information values
 
-##WOE
-
-Creiamo il vettore dell'information value e mettiamolo in un grafico a barre
+Creiamo il vettore degli information values e lo rappresentiamo tramite grafico:
 
 ```{r all IV table}
 names(bank0)
@@ -1143,22 +1202,27 @@ Variables <- c("age_class", "job", "marital", "education", "default", "balance_c
 t_IV_all <- data.frame(Variables, IV)
 t_IV_all <- t_IV_all %>%
         arrange(desc(IV))
+t_IV_all
 ```
-
-Nota su duration: ho scoperto da uno studio su internet che duration fa riferimento alla chiamata di chiusura; perciò non è utilizzabile ai nostri fini, e l'information value sopra lo 0.5, anzi, sopra l'unità la rendeva una variabile assai sospetta. Quindi non la includeremo.
 
 ```{r all IV graph}
 g_IV_all <- ggplot(t_IV_all, aes(x= reorder(Variables, IV), y= IV)) +
-  geom_bar(stat='identity') +
-  coord_flip()
+        geom_bar(stat='identity') +
+        coord_flip() +
+        ggtitle ("Information values") +
+        ylab("Variabili") +
+        xlab("Inromation value") +
+        geom_hline(yintercept = c(0.02, 0.1, 0.3, 0.5), linewidth = 2, linetype = 2, col = c("yellow", "blue", "green", "red"))
 g_IV_all
 ```
 
-Duration class è la più sospetta, troppo predittiva. Può darsi che i miei sospetti sul fatto che si riferisca alla chiamata di chiusura siano veri.
+Le 4 rette trattegiate indicano le soglie per: predittività assente (tra asse e retta gialla), debole (tra retta gialla e blue), media (tra retta blu e verde), forte (tra retta verde e rossa), sospetta (oltre retta rossa).
 
+**ricominciare da qui**
 
+##Esplorazione dell'associazione tra coppie di variabili e in relazione alla sottoscrizione
 
-#GGpairs
+###Matrice dei grafici bivariati
 
 ```{r ggpairs, fig.width=20, fig.height=20}
 #bank0_prof_ggpairs <- ggpairs(bank0_sm[])
