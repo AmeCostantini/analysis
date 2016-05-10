@@ -1262,77 +1262,70 @@ Stratification might reveal otherwise hidden confounding and interaction. Exampl
 Spesso c'è in parte confounding e in parte interaction. The best estimate of association is both valid and precise. If interaction is present, strata-specific measures of association are reported. If interaction is absent but confounding is present, summary (adjusted) measures of association are reported. If neither interaction nor confounding are present, crude (unadjusted) measures of association are reported. In general, the most parsimoniously unconfounded presentation of the data is preferred. If the association between the exposure and disease is not found by scrutinizing the data in the 2-by-2 table, it's hard to support. Simple is better. 
 Qui si parla di RR e di quale va riportato se c'è confounding e/o se c'è interaction.
 
-##previous e poutcome
-
-In questo caso sia il numero di contatti della precedente campagna che l'esito della precedente campagna sono predittive. Solo che osservando che al crescere dei contatti della precedente campagna cresce la conversion dell'attuale, mi domando se in realtà non sia stato la predisposizione a convertire della precedente campagna a generare sia tanti contatti (mi faccio chiamare e risponso perché interessato) che l'attuale conversion (ero e sono interessato a sottoscrivere prodotti aggiuntivi).
-
-
-```{r previos_poutcome_y table}
-t_previous_y <- bank0 %>%
-        group_by(previous_class) %>%
-        summarise(n = n(), y_rate = mean(y == "yes")) %>%
-        mutate(freq_rel = n / sum(n)) %>%
-        select(previous_class, y_rate)
-
-t_previous_poutcome_y <- bank0 %>%
-        group_by(previous_class, poutcome) %>%
-        summarise(n = n(), y_rate = mean(y == "yes")) %>%
-        mutate(freq_rel = n / sum(n)) %>%
-        select(previous_class, poutcome, y_rate) %>%
-        spread(previous_class, y_rate)
-
-g_previous_class_poutcome_f <- g_previous_class + facet_wrap(~poutcome)
-g_previous_class_poutcome <- ggplot(bank0, aes(x = factor(previous_class), fill = poutcome)) +
-        geom_bar(position = "fill")
-g_previous_poutcome_y <- g_previous_class_y + facet_wrap(~poutcome)
-g_previous_class_y
-```
-
-Ora, per ogni esito della precedente campagna, il numero dei contatti discrimina molto meno che nella crude analysis (tranne che per esito sconosciuto, che però coincide con contati zero, cioè nessuna partecipazione alla precedente campagna). Perciò la mia ipotesi è abbastanza confermata, poutcome ci permette di interpretare abbastanza la relazione tra contatti e conversion.
-Come controprova, faccio il condizionamento al contrario:
-
-```{r}
-g_poutcome_previos_y <- g_poutcome_y + facet_wrap(~previous_class)
-g_poutcome_previos_y
-```
-
-Per ogni contatto c'è una bella discriminazione della conversion, perciò la mia ipotesi era esatta. è la predispozione a convertire nella vecchia campagna che contribuisce a determinare il numero di contatti e la nuova conversion.
-
-*La conclusione è che se includeremo nel modello previous andrebbe incluso anche poutcome, come variabile di controllo? Oppure basta poutcome? Mah, alla fine soprattutto per il livello failure, il numero di contatti discrimina, quindi includerei entrambe.*.
-
 ##Age e job
 
-```{r age job graph}
-g_age_class <- ggplot(bank0, aes(x = age_class)) + 
-        geom_bar()
-g_age_class_y <- ggplot(bank0, aes(x = age_class, fill = y)) + 
-        geom_bar(position = "fill") + 
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
-g_age_class_y
-g_job
-g_job_y
+L'ipotesi è che il maggior tasso di sottoscrizione della fascia giovane possa spiegare o essere spiegato dal maggiore tasso di sottoscrizione degli studenti. Lo stesso vale per fascia anziana e pensionati. Poiché in questo caso la direzione causale non è chiara sin dal principio, dovremo capire come ognuna delle due variabili si distribuisce sui livelli dell'altra. Lo faremo tramite esplorazione grafica:
 
-g_job_age_class <- ggplot(bank0, aes(x = job, fill = age_class)) + 
-        geom_bar(position = "fill") + 
-        geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2)
-g_job_age_class
-#distribuzione molto sbilanciata della variabile di controllo per i due livelli studenee pensionato, probabile che age aiuti a capire la relazione tra job e conversion.
+```{r age job graph and table}
+t_job_age <- bank0 %>%
+        group_by(job, age_class) %>%
+        summarise(frequenza = n()) %>%
+        mutate(frequenza_relativa = frequenza / sum(frequenza)) %>%
+        select(job, age_class, frequenza_relativa) %>%
+        spread(age_class, frequenza_relativa)
+kable(t_job_age, digits = 4, format = "markdown")
 
+g_job_age  <- ggplot(bank0, aes(x = job, fill = age_class)) +
+        geom_bar(position = "fill") +
+        ggtitle("distribuzione di age_class per job") +
+        ylab("percentuale di fascie di età") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_job_age
+
+g_age_job  <- ggplot(bank0, aes(x = age_class, fill = job)) +
+        geom_bar(position = "fill") +
+        ggtitle("distribuzione di job per age_class") +
+        ylab("percentuale di job") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g_age_job
+```
+
+Notiamo dal primo grafico che per tutte le professioni tranne due la maggior parte dei clienti sono adulti; tuttavia gli studenti sono tutti giovani e metà pensionati sono anziani. Se però osserviamo il secondo grafico vediamo che non è vero il contrario: i giovani non sono tutti studenti, anzi, fanno i lavori più disparati. Vediamo come si sottoscrive per combinazione di fascia di età e professione:
+
+```{r age job y graph and table}
 g_job_age_class_y <- ggplot(bank0, aes(x = job, fill = y)) + 
         geom_bar(position = "fill") + 
         geom_hline(yintercept = mean(bank0$y!="yes"), width = 2, col = "black", linetype = 2) +
         facet_wrap(~age_class) +
+        ggtitle("penetrazione per age e job") +
+        ylab("percentuale di job") +
+        scale_y_continuous(breaks = seq(0, 1, 0.1)) +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
 g_job_age_class_y
+
+t_job_age_y <- bank0 %>%
+        group_by(job, age_class) %>%
+        summarise(tasso_sottoscrizione = mean(y == "yes")) %>%
+        select(job, age_class, tasso_sottoscrizione) %>%
+        spread(age_class, tasso_sottoscrizione) %>%
+        left_join(t_job_y, by ="job") %>%
+        select(-frequenza, -frequenza_relativa)
+kable(t_job_age_y, digits = 4, format = "markdown")
+
+t_job_age_y_pp <- bank0 %>%
+        group_by(job, age_class) %>%
+        summarise(tasso_sottoscrizione = mean(y == "yes")) %>%
+        select(job, age_class, tasso_sottoscrizione)
+g_job_age_y_pp <- ggplot(t_job_age_y_pp, aes(x = age_class, y = tasso_sottoscrizione, col = job, group = job)) +
+        geom_point() +
+        geom_line()
 ```
 
-La proporzione delle fasce di età nei job mostra squilibri; ci sono molte professioni dove quasi tutti sono adulti, gli studenti poi sono quasi tutti giovani e i pensionati sono metà adulti e metà anziani. Mentre la relazione tra job e conversion ci dice che i pensionati convertono di più, controllando per l'età vediamo che convertono non se pensionati, ma se pensionati vecchi. Se vai in pensione adulto non converti. 
+Se fosse l'età a spiegare la maggior sottoscrizione di pensionati e studenti, in ragione del fatto che quasi tutti gli studenti sono giovani e che il 50% dei pensionati sono anziani, allora confrontando tutti clienti della stessa età dovremmo avere comportamenti simili. Nella fascia 18-30 stiamo prendendo in considerazione tutti clienti giovani, eppure osserviamo differenze di comportamento tra una professione e l'altra, quindi l'età non spiega tutta la differenza di comportamento tra le professioni. Anche tra gli anziani ci sono differenze di comportamento tra una professione e l'altra, i pensionati convertono di più di altre professioni a parità di età, quindi anche qui l'età non spiega la relazione tra professione e sottoscrizione.
 
-Se ci limitiamo agli anziani, tutti i job convertono molto, ma comunque i pensionati di più. Quindi è chiaro che i pensionati crudamente convertono di più perché in essi la metà è anziana, ma comunque tra gli anziani i pensionati convertono più degli altri. Essere vecchio ti fa convertire, essere vecchio e in pensione ancora di più. Vi è una qualche interazione.
-
-Invece gli studenti convertono anche se adulti; se si osserva la conversion per fasce di età, gli adulti convertono nella media; se invece sei adulto ma studente converti più della media, perciò essere studente è legato al convertire a prescindere (in parte) dall'età.
-
-Il problema andrebbe complicato ragionando sui volumi bassi di alcuni sottogruppi.
+Quando non si può spiegare la relazione tra due variabili grazie a una terza l'unica altra verifica da fare è l'eventuale presenza di interazione, vale a dire di comportamenti differenti della relazione tra due variabili quando l'indipendente si combina con un'altra variabile indipendente, in aggiunta al semplice **main effect**. Nelnostro caso, il **main effect** si esprime coil fatto che tutte le professioni, se i clienti sono adulti, sottoscrivono meno, un indizio di interazione invece risiede nella comparazione tra pensionati e altre professioni nella fascia adulta rispetto al campione complessivo: dall'essere, nel complesso, la seconda professione a sottoscrivere (in proporzione), nella fascia adulta è dietro a molte altre professioni. Sembra una interazione debole, la testeremo nel modello per scrupolo.
 
 ##Age e marital
 
@@ -1535,7 +1528,43 @@ g_month_duration_class
 
 Non è sbilanciata, marzo è uguale a maggio. Non c'è stata una maggiore dedizione alla telefonata nei mesi di bassi volumi. Io la variabile month la inserisco con riserva, deve esserci della stagionalità.
 
+##previous e poutcome
 
+In questo caso sia il numero di contatti della precedente campagna che l'esito della precedente campagna sono predittive. Solo che osservando che al crescere dei contatti della precedente campagna cresce la conversion dell'attuale, mi domando se in realtà non sia stato la predisposizione a convertire della precedente campagna a generare sia tanti contatti (mi faccio chiamare e risponso perché interessato) che l'attuale conversion (ero e sono interessato a sottoscrivere prodotti aggiuntivi).
+
+
+```{r previos_poutcome_y table}
+t_previous_y <- bank0 %>%
+        group_by(previous_class) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(freq_rel = n / sum(n)) %>%
+        select(previous_class, y_rate)
+
+t_previous_poutcome_y <- bank0 %>%
+        group_by(previous_class, poutcome) %>%
+        summarise(n = n(), y_rate = mean(y == "yes")) %>%
+        mutate(freq_rel = n / sum(n)) %>%
+        select(previous_class, poutcome, y_rate) %>%
+        spread(previous_class, y_rate)
+
+g_previous_class_poutcome_f <- g_previous_class + facet_wrap(~poutcome)
+g_previous_class_poutcome <- ggplot(bank0, aes(x = factor(previous_class), fill = poutcome)) +
+        geom_bar(position = "fill")
+g_previous_poutcome_y <- g_previous_class_y + facet_wrap(~poutcome)
+g_previous_class_y
+```
+
+Ora, per ogni esito della precedente campagna, il numero dei contatti discrimina molto meno che nella crude analysis (tranne che per esito sconosciuto, che però coincide con contati zero, cioè nessuna partecipazione alla precedente campagna). Perciò la mia ipotesi è abbastanza confermata, poutcome ci permette di interpretare abbastanza la relazione tra contatti e conversion.
+Come controprova, faccio il condizionamento al contrario:
+
+```{r}
+g_poutcome_previos_y <- g_poutcome_y + facet_wrap(~previous_class)
+g_poutcome_previos_y
+```
+
+Per ogni contatto c'è una bella discriminazione della conversion, perciò la mia ipotesi era esatta. è la predispozione a convertire nella vecchia campagna che contribuisce a determinare il numero di contatti e la nuova conversion.
+
+*La conclusione è che se includeremo nel modello previous andrebbe incluso anche poutcome, come variabile di controllo? Oppure basta poutcome? Mah, alla fine soprattutto per il livello failure, il numero di contatti discrimina, quindi includerei entrambe.*.
 ```{r partizione training e test}
 #set.seed(19121984)
 
