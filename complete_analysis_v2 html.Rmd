@@ -119,13 +119,7 @@ summary(bank0$age)
 
 Il range è dai 18 ai 95, vediamo in forma grafica la distribuzione delle varie età.
 
-```{r age table and graph, fig.width=16, fig.height=7}
-t_age <- bank0 %>%
-        group_by(age) %>%
-        summarise(frequenza = n()) %>% 
-        mutate(frequenza_relativa = frequenza / sum(frequenza))
-kable(t_age, digits = 4, format = "markdown")
-
+```{r age graph, fig.width=16, fig.height=7}
 g_age <- ggplot(bank0, aes(x = factor(age))) + geom_bar(col = "white") +
         ggtitle("distribuzione per età") +
         xlab("età") +
@@ -1615,12 +1609,39 @@ Guardando ai valori dei coefficienti, i loro p.value sono spesso significativi (
 
 ###Verifica di multicollinearità
 
+Con il codice sottostante creiamo la matrice con la *variance decomposition proportion* e il *condition index*. Verifichiamo se ci son indici maggiori di 30 con una proporzione della scomposizione della varianza maggiore di 0.5
+
 ```{r coll}
-cd <- colldiag(model.matrix(glm1_vsa))
-print(cd)
+cd1 <- colldiag(model.matrix(glm1_vsa))
+cd1_pi_df <- as.data.frame(cd1$pi)
+cd1_indx_df <- as.data.frame(cd1$condindx)
+cd1_df <- data.frame(cd1_indx_df, cd1_pi_df, row.names = NULL)
+cd1_mc<- gather(cd1_df, variable, vdp, -cond.index) %>%
+        arrange(cond.index) %>%
+        filter(cond.index > 30 & vdp > 0.5)
+kable(cd1_mc, digits = 4, format = "markdown")
 ```
 
-Ci sono due indici (il 48 e il 49) maggiori di 30, ma nessuna vdp maggiore di 0.5 (anche se un paio hanno valori prossimo a 0.5), dunque non ci sono problemi di multicollinearità.
+`age` genera problemi di multicollinearità, probabilmente in ragione degli effetti di interazione inseriti nel modello ma di cui non c'era fortissima evidenza nell'analisi esplorativa. Proviamo a rimuovere gli effetti di interazione in cui è presente la variabile dell'età. 
+
+```{r glm1 mc}
+formula_glm1 <- formula_glm1 <- y ~ age + job + marital + balance + housing + loan + contact + day + month + campaign + pdays + previous + loan*housing
+glm1_vsa <- glm(formula_glm1, family = "binomial", data = training_set_vsa)
+cd1 <- colldiag(model.matrix(glm1_vsa))
+cd1_pi_df <- as.data.frame(cd1$pi)
+cd1_indx_df <- as.data.frame(cd1$condindx)
+cd1_df <- data.frame(cd1_indx_df, cd1_pi_df, row.names = NULL)
+cd1_mc<- gather(cd1_df, variable, vdp, -cond.index) %>%
+        arrange(cond.index) %>%
+        filter(cond.index > 30 & vdp > 0.5)
+kable(cd1_mc, digits = 4, format = "markdown")
+```
+
+Difatti ora solo l'intercetta - ciò non fa problema - è rilevata dalla verifica di multicollinearità.
+
+```{r glm1 mc1 coefficienti}
+summary(glm1_vsa)
+```
 
 ###Test di bontà adattamento modello
 
@@ -1673,11 +1694,17 @@ summary(glm2_vsa)
 ###Verifica di multicollinearità
 
 ```{r coll glm2 }
-cd <- colldiag(model.matrix(glm2_vsa))
-print(cd)
+cd2 <- colldiag(model.matrix(glm2_vsa))
+cd2_pi_df <- as.data.frame(cd2$pi)
+cd2_indx_df <- as.data.frame(cd2$condindx)
+cd2_df <- data.frame(cd2_indx_df, cd2_pi_df, row.names = NULL)
+cd2_mc<- gather(cd2_df, variable, vdp, -cond.index) %>%
+        arrange(cond.index) %>%
+        filter(cond.index > 30 & vdp > 0.5)
+kable(cd2_mc, digits = 4, format = "markdown")
 ```
 
-Nessun indice, eccetto intercetta, supera 30. Non ci sono problemi di multicollinearità.
+Nessun problema di multicollinearità rilevato.
 
 ###Test di bontà adattamento modello
 
@@ -1720,21 +1747,47 @@ summary(glm3_vsa)
 
 In questo modello sia la variabile `job` che l'interazione tra `job` e `age_class` non è significativa a nessun livello. Tuttavia per ora non esludiamo nulla, utilizzeremo il wald test nella selezione delle variabili un un successivo tentativo. Vediamo se però ci sono problemi di multicollinearità
 
-##Verifica di multicollinearità
+###Verifica di multicollinearità
 
 ```{r glm 3 coll}
 matrix_glm3 <- model.matrix(glm3_vsa)
 matrix_glm3 <- matrix_glm3[,colSums(matrix_glm3 != 0) != 0]
-cd_glm3 <- colldiag(matrix_glm3)
-print(cd_glm3)
-str(cd_glm3)
-cd_glm3$condindx
-#cd_glm3$pi[84,]
+cd3 <- colldiag(matrix_glm3)
+cd3_pi_df <- as.data.frame(cd3$pi)
+cd3_indx_df <- as.data.frame(cd3$condindx)
+cd3_df <- data.frame(cd3_indx_df, cd3_pi_df, row.names = NULL)
+cd3_mc<- gather(cd3_df, variable, vdp, -cond.index) %>%
+        arrange(cond.index) %>%
+        filter(cond.index > 30 & vdp > 0.5)
+kable(cd3_mc, digits = 4, format = "markdown")
 ```
 
-Pdays  e previous_class danno un problema di multicollinearità. Tolgo previous class  eil problema non c'è più.
+Molti problemi di multicollinearità, relativi alle variabili `job`, `age_class`, `marital`, `pdays`, `previous` e `contact`.
 
-##Bontà adattamento modello
+Provo a togliere le interazioni e la variabile di contatto con l'information value più basso, `previous`.
+
+```{r glm3 mc1}
+formula_glm3 <- y ~ age_class + job + marital + balance_class + housing + loan + contact + day + month + campaign_class + pdays_class + loan*housing
+glm3_vsa <- glm(formula_glm3, family = "binomial", data = training_set_vsa)
+matrix_glm3 <- model.matrix(glm3_vsa)
+matrix_glm3 <- matrix_glm3[,colSums(matrix_glm3 != 0) != 0]
+cd3 <- colldiag(matrix_glm3)
+cd3_pi_df <- as.data.frame(cd3$pi)
+cd3_indx_df <- as.data.frame(cd3$condindx)
+cd3_df <- data.frame(cd3_indx_df, cd3_pi_df, row.names = NULL)
+cd3_mc<- gather(cd3_df, variable, vdp, -cond.index) %>%
+        arrange(cond.index) %>%
+        filter(cond.index > 30 & vdp > 0.5)
+kable(cd3_mc, digits = 4, format = "markdown")
+```
+
+Nessuna multicollinearità. Ecco i coefficienti dopo la rimozione delle variabili "problematiche"
+
+```{r glm3 mc1 coefficienti}
+summary(glm3_vsa)
+```
+
+###Bontà adattamento modello
 
 ```{r HL glm3}
 hl_glm3 <- hoslem.test(training_set_vsa$y =="yes", fitted(glm3_vsa), g=10)
@@ -1743,7 +1796,7 @@ hl_glm3
 
 Il test, se rigettato, rigetta l'ipotesi di buon adattamento. Qui non si può rigettare. è vero che c'è il problema che il numero di gruppi non dovrebbe essere inferiore a p+1 (http://thestatsgeek.com/2014/02/16/the-hosmer-lemeshow-goodness-of-fit-test-for-logistic-regression/), e io con le variabili dummy ho molte p. Ma anche se i gruppi sono 100, il p.value è significativo, quindi il buon adattamento va rigettato.
 
-#Stima performance predittive
+###Stima performance predittive
 
 ```{r glm3 AUC on validation}
 glm3_vsa_predictions  <- predict(glm3_vsa, validation_set_vsa, type="response")
@@ -1752,17 +1805,10 @@ AUC_glm3_vsa <- roc(validation_set_vsa$y, glm3_vsa_predictions, levels=c("no", "
 AUC_glm3_vsa$auc
 ```
 
-AUC del modello sul validation set è 0.755 (stabile anche dopo aver tolo previous per multicollinearità). Con quella competerà con gli altri modelli, se la diagnostica non me lo fa cambiare.
+Il modello 3 ha una AUROC di `r AUC_glm3_vsa$auc`, calcolata sul dataset di validazione non utilizzato per addestrare il modello. Miglior performance sinora.
 
-
-Vediamo la AUCPR
-
-```{r glm3 AUCPR on validation 1}
-AUCPR_glm3_vsa <- pr.curve(glm3_vsa_predictions, weights.class0 = validation_set_vsa$y == "yes", curve=T)
-AUCPR_glm3_vsa
-plot(AUCPR_glm3_vsa)
-```
-
+##Modello 4
+**ripartire da qui**
 
 Modello simile a glm3, ma uso i p.value per escludere variabili se possibile
 
